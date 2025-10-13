@@ -74,13 +74,17 @@ pipeline {
 
         stage("Test") {
             parallel {
-                stage("Backend Tests") {
-                    steps {
-                        dir('emp_backend') {
-                            sh 'mvn test'  // Runs JUnit tests and generates JaCoCo coverage
-                        }
-                    }
-                }
+stage('Backend Tests') {
+    steps {
+        dir("emp_backend") {
+            sh '''
+                mvn clean test
+                mvn jacoco:report
+            '''
+            junit 'target/surefire-reports/**/*.xml', allowEmptyResults: true
+        }
+    }
+}
 
                 stage("Frontend Tests") {
                     steps {
