@@ -79,12 +79,12 @@ pipeline {
             steps {
                 script {
                     // Backend tests
-                    dir('ems-backend') {
+                    dir('emp_backend') {
                         sh 'mvn test || true'  // Run backend tests
                     }
                     
                     // Frontend tests (if you have test scripts)
-                    dir('ems-frontend') {
+                    dir('employee frontend final') {
                         sh 'npm test -- --coverage --watchAll=false || true'
                     }
                 }
@@ -96,7 +96,7 @@ pipeline {
             steps {
                 script {
                     // Package backend
-                    dir('ems-backend') {
+                    dir('emp_backend') {
                         sh 'mvn clean package -DskipTests'
                     }
                     
