@@ -2,8 +2,8 @@ pipeline {
     agent any
     
     tools {
-        maven 'Maven'  // Use the configured Maven installation
-        nodejs 'NodeJS'  // Use the configured Node.js installation
+        maven 'maven-3.9'  // Use the configured Maven installation
+        nodejs 'node-18'  // Use the configured Node.js installation
     }
     
     environment {
