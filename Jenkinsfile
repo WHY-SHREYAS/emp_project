@@ -1,8 +1,8 @@
 pipeline {
     agent any
     tools {
-        maven 'Maven'  // Use the configured Maven installation
-        nodejs 'NodeJS'  // Use the configured Node.js installation
+        maven 'maven-3.9'  // Use the configured Maven installation
+        nodejs 'node-18'  // Use the configured Node.js installation
     }
     environment {
         SONAR_HOME = tool "Sonar"
@@ -14,26 +14,25 @@ your SonarQube server URL
             steps {
                 git url:
 "https://github.com/Jayant0403/ReactJS-Spring-Boot-CRUD-Full-Stack-App",
-branch: "master"
+branch: "main"
             }
         }
         stage("Build") {
             steps {
                 sh 'ls -la'  // Debug: List contents of the root workspace
                 // Backend build
-                dir('springboot-backend') {
+                dir('emp-backend') {
                     sh 'ls -la'  // Debug: List contents
                     sh 'mvn -version'  // Debug: Check Maven
                     sh 'mvn clean compile'  // Compile Java code
                 }
                 // Frontend build
-                dir('react-frontend') {
+                dir('employee frontend final') {
                     sh 'ls -la'
                     sh 'node --version'
                     sh 'npm --version'
                     sh 'npm cache clean --force'   // 🧹 Clean npm cache
-                    sh 'rm -rf node_modules package-lock.json'  // 🔄
-Remove old deps
+                    sh 'rm -rf node_modules package-lock.json'  // 🔄 Remove old deps
                     sh 'npm install'  // Fresh install
                     sh 'npm audit fix || true'
                     sh 'CI=false npm run build'  // Build
@@ -66,8 +65,7 @@ Remove old deps
             steps {
                 script {
                     timeout(time: 10, unit: 'MINUTES') {
-                        withCredentials([string(credentialsId:
-'Sonar', variable: 'SONAR_TOKEN')]) {
+                        withCredentials([string(credentialsId:'Sonar', variable: 'SONAR_TOKEN')]) {
                             def qgStatus = sh(
                                 script: """
                                     curl -s -f -u "\$SONAR_TOKEN:" \
@@ -82,8 +80,7 @@ Remove old deps
                             def firstStatus = qgStatus.readLines()[0]
                             echo "Quality Gate status: ${firstStatus}"
                             if (firstStatus == 'ERROR' || firstStatus != 'OK') {
-                                error "Quality Gate failed: Coverage
-or other metrics did not meet requirements"
+                                error "Quality Gate failed: Coverage or other metrics did not meet requirements"
                             }
                             echo "✅ Quality Gate passed for the project"
                         }
@@ -95,17 +92,15 @@ or other metrics did not meet requirements"
             parallel {
                 stage("Backend Tests") {
                     steps {
-                        dir('springboot-backend') {
-                            sh 'mvn test'  // Runs JUnit tests and
-generates JaCoCo coverage
+                        dir('emp_backend') {
+                            sh 'mvn test'  // Runs JUnit tests and generates JaCoCo coverage
                         }
                     }
                 }
                 stage("Frontend Tests") {
                     steps {
-                        dir('react-frontend') {
-                            sh 'npm test -- --coverage'  // Runs Jest
-tests with coverage (if configured)
+                        dir('employee frontend final') {
+                            sh 'npm test -- --coverage'  // Runs Jesttests with coverage (if configured)
                         }
                     }
                 }
@@ -114,11 +109,9 @@ tests with coverage (if configured)
         stage("Archive Test Results") {
             steps {
                 junit
-'springboot-backend/target/surefire-reports/*.xml'  // Archive JUnit
-reports
+'springboot-backend/target/surefire-reports/*.xml'  // Archive JUnit reports
                 archiveArtifacts artifacts:
-'react-frontend/coverage/**', allowEmptyArchive: true  // Archive JS
-coverage
+'react-frontend/coverage/**', allowEmptyArchive: true  // Archive JS coverage
 
             }
         }
