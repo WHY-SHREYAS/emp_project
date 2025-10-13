@@ -106,8 +106,8 @@ pipeline {
         stage("Archive Test Results") {
             steps {
                 junit
-'springboot-backend/target/surefire-reports/*.xml'  // Archive JUnit reports
-                archiveArtifacts artifacts:
+'springboot-backend/target/surefire-reports/*.xml'  // Archive JUnit reports archiveArtifacts 
+                artifacts:
 'react-frontend/coverage/**', allowEmptyArchive: true  // Archive JS coverage
 
             }
