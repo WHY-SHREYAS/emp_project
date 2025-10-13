@@ -1,8 +1,8 @@
 pipeline {
     agent any
     tools {
-        maven 'maven-3.9'  // Use the configured Maven installation
-        nodejs 'node-18'  // Use the configured Node.js installation
+        maven 'maven-3.9'        // Use the configured Maven installation
+        nodejs 'node-18'         // Use the configured Node.js installation
     }
     environment {
         SONAR_HOME = tool "Sonar"
@@ -14,50 +14,49 @@ pipeline {
                 git url: "https://github.com/WHY-SHREYAS/emp_project.git", branch: "main"
             }
         }
+
         stage("Build") {
             steps {
                 sh 'ls -la'  // Debug: List contents of the root workspace
+
                 // Backend build
                 dir('emp_backend') {
-                    sh 'ls -la'  // Debug: List contents
+                    sh 'ls -la'        // Debug: List contents
                     sh 'mvn -version'  // Debug: Check Maven
                     sh 'mvn clean compile'  // Compile Java code
                 }
+
                 // Frontend build
                 dir('employee frontend final') {
                     sh 'ls -la'
                     sh 'node --version'
                     sh 'npm --version'
-                    sh 'npm cache clean --force'   // 🧹 Clean npm cache
-                    sh 'rm -rf node_modules package-lock.json'  // 🔄 Remove old deps
-                    sh 'npm install'  // Fresh install
+                    sh 'npm cache clean --force'                   // Clean npm cache
+                    sh 'rm -rf node_modules package-lock.json'    // Remove old dependencies
+                    sh 'npm install'                              // Fresh install
                     sh 'npm audit fix || true'
-                    sh 'CI=false npm run build'  // Build
+                    sh 'CI=false npm run build'                   // Build frontend
                 }
             }
         }
+
         stage("SonarQube quality Analysis") {
             steps {
                 withSonarQubeEnv("Sonar") {
                     sh """
                         $SONAR_HOME/bin/sonar-scanner \
-
--Dsonar.projectName=ReactJS-Spring-Boot-CRUD-Full-Stack-App \
-
--Dsonar.projectKey=ReactJS-Spring-Boot-CRUD-Full-Stack-App \
-
--Dsonar.java.binaries=springboot-backend/target/classes \
-
--Dsonar.sources=springboot-backend/src/main,springboot-backend/src/test,react-frontend/src
-\
+                        -Dsonar.projectName=ReactJS-Spring-Boot-CRUD-Full-Stack-App \
+                        -Dsonar.projectKey=ReactJS-Spring-Boot-CRUD-Full-Stack-App \
+                        -Dsonar.java.binaries=springboot-backend/target/classes \
+                        -Dsonar.sources=springboot-backend/src/main,springboot-backend/src/test,react-frontend/src \
                         -Dsonar.tests=react-frontend/src \
                         -Dsonar.test.inclusions=**/*.test.js,**/*.test.jsx \
-
--Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**
+                        -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**
                     """
                 }
             }
         }
+
         stage("Quality Gate Check") {
             steps {
                 script {
@@ -66,9 +65,7 @@ pipeline {
                             def qgStatus = sh(
                                 script: """
                                     curl -s -f -u "\$SONAR_TOKEN:" \
-
-'${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=ReactJS-Spring-Boot-CRUD-Full-Stack-App'
-\
+                                    '${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=ReactJS-Spring-Boot-CRUD-Full-Stack-App' \
                                     | grep -o '"status":"[^"]*"' \
                                     | cut -d'"' -f4 || echo "ERROR"
                                 """,
@@ -85,6 +82,7 @@ pipeline {
                 }
             }
         }
+
         stage("Test") {
             parallel {
                 stage("Backend Tests") {
@@ -94,24 +92,24 @@ pipeline {
                         }
                     }
                 }
+
                 stage("Frontend Tests") {
                     steps {
                         dir('employee frontend final') {
-                            sh 'npm test -- --coverage'  // Runs Jesttests with coverage (if configured)
+                            sh 'npm test -- --coverage'  // Runs Jest tests with coverage
                         }
                     }
                 }
             }
         }
+
         stage("Archive Test Results") {
             steps {
-                junit
-'springboot-backend/target/surefire-reports/*.xml'  // Archive JUnit reports archiveArtifacts 
-                artifacts:
-'react-frontend/coverage/**', allowEmptyArchive: true  // Archive JS coverage
-
+                junit 'springboot-backend/target/surefire-reports/*.xml'  // Archive JUnit reports
+                archiveArtifacts artifacts: 'react-frontend/coverage/**', allowEmptyArchive: true  // Archive JS coverage
             }
         }
+
         stage("Deploy") {
             steps {
                 echo "Deploy stage completed"
