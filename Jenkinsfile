@@ -23,14 +23,14 @@ pipeline {
                 sh 'ls -la'  // Debug: List contents of the root workspace
                 
                 // Backend build
-                dir('ems-backend') {
+                dir('emp_backend') {
                     sh 'ls -la'  // Debug: List contents
                     sh 'mvn -version'  // Debug: Check Maven
                     sh 'mvn clean compile'  // Compile Java code
                 }
                 
                 // Frontend build
-                dir('ems-frontend') {
+                dir('employee frontend final') {
                     sh 'ls -la'
                     sh 'node --version'
                     sh 'npm --version'
