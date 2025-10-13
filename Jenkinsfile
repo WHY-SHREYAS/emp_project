@@ -6,22 +6,19 @@ pipeline {
     }
     environment {
         SONAR_HOME = tool "Sonar"
-        SONAR_HOST_URL = 'http://13.53.172.28:9000'  // Replace with
-your SonarQube server URL
+        SONAR_HOST_URL = 'http://3.109.151.67:9000'  // Replace with your SonarQube server URL
     }
     stages {
         stage("Cloning from github") {
             steps {
-                git url:
-"https://github.com/Jayant0403/ReactJS-Spring-Boot-CRUD-Full-Stack-App",
-branch: "main"
+                git url: "https://github.com/WHY-SHREYAS/emp_project.git", branch: "main"
             }
         }
         stage("Build") {
             steps {
                 sh 'ls -la'  // Debug: List contents of the root workspace
                 // Backend build
-                dir('emp-backend') {
+                dir('emp_backend') {
                     sh 'ls -la'  // Debug: List contents
                     sh 'mvn -version'  // Debug: Check Maven
                     sh 'mvn clean compile'  // Compile Java code
