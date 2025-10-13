@@ -43,7 +43,7 @@ pipeline {
             }
         }
         
-        stage("SonarQube Quality Analysis") {
+     stage("SonarQube Quality Analysis") {
             steps {
                 withSonarQubeEnv("Sonar") {
                     sh """
@@ -51,8 +51,8 @@ pipeline {
                         -Dsonar.projectName=Employee-Management-System \
                         -Dsonar.projectKey=Employee-Management-System \
                         -Dsonar.java.binaries=emp_backend/target/classes \
-                        -Dsonar.sources=emp_backend/src/main,employee frontend final/src \
-                        -Dsonar.tests=employee frontend final/src \
+                        -Dsonar.sources=emp_backend/src/main,employee\\ frontend\\ final/src \
+                        -Dsonar.tests=employee\\ frontend\\ final/src \
                         -Dsonar.test.inclusions=**/*.test.js,**/*.test.jsx,**/*.test.ts,**/*.test.tsx \
                         -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/target/**
                     """
@@ -64,26 +64,12 @@ pipeline {
             steps {
                 script {
                     timeout(time: 10, unit: 'MINUTES') {
-                        withCredentials([string(credentialsId: 'Sonar', variable: 'SONAR_TOKEN')]) {
-                            def qgStatus = sh(
-                                script: """
-                                    curl -s -f -u "\$SONAR_TOKEN:" \
-                                    '${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=Employee-Management-System' \
-                                    | grep -o '"status":"[^"]*"' \
-                                    | cut -d'"' -f4 || echo "ERROR"
-                                """,
-                                returnStdout: true
-                            ).trim()
-                            
-                            def firstStatus = qgStatus.readLines()[0]
-                            echo "Quality Gate status: ${firstStatus}"
-                            
-                            if (firstStatus == 'ERROR' || firstStatus != 'OK') {
-                                error "Quality Gate failed: Coverage or other metrics did not meet requirements"
-                            }
-                            
-                            echo "Quality Gate passed for the project"
+                        // This will automatically look for report-task.txt and wait for Quality Gate
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Quality Gate failed: ${qg.status}"
                         }
+                        echo "Quality Gate passed successfully!"
                     }
                 }
             }
