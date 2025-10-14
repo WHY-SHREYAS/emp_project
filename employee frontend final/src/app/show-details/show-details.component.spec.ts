@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ShowDetailsComponent } from './show-details.component';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { RouterTestingModule } from '@angular/router/testing'; // ✅ Add this
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
 
@@ -11,7 +12,10 @@ describe('ShowDetailsComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       declarations: [ShowDetailsComponent],
-      imports: [HttpClientTestingModule], // ✅ For EmployeeService / HttpClient
+      imports: [
+        HttpClientTestingModule,  // ✅ For EmployeeService / HttpClient
+        RouterTestingModule       // ✅ For routerLink directive
+      ],
       providers: [
         {
           provide: ActivatedRoute,
