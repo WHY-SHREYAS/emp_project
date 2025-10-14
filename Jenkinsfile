@@ -6,7 +6,7 @@ pipeline {
     }
     environment {
         SONAR_HOME = tool "Sonar"
-        SONAR_HOST_URL = 'http://3.109.151.67:9000'  // Replace with your SonarQube server URL
+        SONAR_HOST_URL = 'http://43.205.122.223:9000'  // Replace with your SonarQube server URL
     }
     stages {
         stage("Cloning from github") {
@@ -61,7 +61,6 @@ pipeline {
             steps {
                 script {
                     timeout(time: 10, unit: 'MINUTES') {
-                        // This will automatically look for report-task.txt and wait for Quality Gate
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
                             error "Quality Gate failed: ${qg.status}"
