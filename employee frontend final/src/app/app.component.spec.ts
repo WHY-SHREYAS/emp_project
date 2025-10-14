@@ -21,11 +21,13 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('frontend');
   });
 
-  it('should render title', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
+it('should render footer text', () => {
+  const fixture = TestBed.createComponent(AppComponent);
+  fixture.detectChanges();
+  const compiled = fixture.nativeElement as HTMLElement;
 
-    expect(compiled.querySelector('.content span')?.textContent).toContain('frontend');
-  });
+  expect(compiled.querySelector('footer .container span')?.textContent)
+    .toContain('Employee Management System');
+});
+
 });
