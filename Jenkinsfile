@@ -64,22 +64,24 @@ stage('Backend Tests') {
             }
         }
 
-       stage("SonarQube Quality Analysis") {
-            steps {
-                withSonarQubeEnv("Sonar") {
-                    sh """
-                        $SONAR_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=Employee-Management-System \
-                        -Dsonar.projectKey=Employee-Management-System \
-                        -Dsonar.java.binaries=emp_backend/target/classes \
-                        -Dsonar.sources=emp_backend/src/main,employee\\ frontend\\ final/src \
-                        -Dsonar.tests=employee\\ frontend\\ final/src \
-                        -Dsonar.test.inclusions=**/*.test.js,**/*.test.jsx,**/*.test.ts,**/*.test.tsx \
-                        -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/target/**
-                    """
-                }
-            }
+stage("SonarQube Quality Analysis") {
+    steps {
+        withSonarQubeEnv("Sonar") {
+            sh """
+                $SONAR_HOME/bin/sonar-scanner \
+                -Dsonar.projectName=Employee-Management-System \
+                -Dsonar.projectKey=Employee-Management-System \
+                -Dsonar.java.binaries=emp_backend/target/classes \
+                -Dsonar.sources=emp_backend/src/main,employee\\ frontend\\ final/src \
+                -Dsonar.tests=emp_backend/src/test,employee\\ frontend\\ final/src \
+                -Dsonar.test.inclusions=**/*.test.js,**/*.test.jsx,**/*.test.ts,**/*.test.tsx,**/src/test/**/*.java \
+                -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/target/** \
+                -Dsonar.coverage.jacoco.xmlReportPaths=emp_backend/target/site/jacoco/jacoco.xml \
+                -Dsonar.java.coveragePlugin=jacoco
+            """
         }
+    }
+}
         
         stage("Quality Gate Check") {
             steps {
