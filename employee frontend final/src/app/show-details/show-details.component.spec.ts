@@ -11,11 +11,11 @@ describe('ShowDetailsComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       declarations: [ShowDetailsComponent],
+      imports: [HttpClientTestingModule],
       providers: [
         {
           provide: ActivatedRoute,
           useValue: {
-            // Mock params or data based on your component’s usage
             params: of({ id: 1 }),
             queryParams: of({ q: 'test' }),
             snapshot: { paramMap: { get: (key: string) => '1' } }
