@@ -1,11 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
-import { AppComponent } from './app.component';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { AppComponent } from './app.component';
 
 describe('AppComponent', () => {
   beforeEach(() => TestBed.configureTestingModule({
-    imports: [RouterTestingModule],
+    imports: [
+      RouterTestingModule,
+      HttpClientTestingModule   // ✅ Added this
+    ],
     declarations: [AppComponent]
   }));
 
@@ -21,13 +24,12 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('frontend');
   });
 
-it('should render footer text', () => {
-  const fixture = TestBed.createComponent(AppComponent);
-  fixture.detectChanges();
-  const compiled = fixture.nativeElement as HTMLElement;
+  it('should render footer text', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
 
-  expect(compiled.querySelector('footer .container span')?.textContent)
-    .toContain('Employee Management System');
-});
-
+    expect(compiled.querySelector('footer .container span')?.textContent)
+      .toContain('Employee Management System');
+  });
 });
