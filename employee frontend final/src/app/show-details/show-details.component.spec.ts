@@ -8,61 +8,28 @@ describe('ShowDetailsComponent', () => {
   let component: ShowDetailsComponent;
   let fixture: ComponentFixture<ShowDetailsComponent>;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
       declarations: [ShowDetailsComponent],
-      imports: [HttpClientTestingModule],
-      providers: [
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            params: of({ id: 1 }),
-            queryParams: of({ q: 'test' }),
-            snapshot: { paramMap: { get: (key: string) => '1' } }
-          }
-        }
-      ]import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ShowDetailsComponent } from './show-details.component';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { ActivatedRoute } from '@angular/router';
-import { of } from 'rxjs';
-
-describe('ShowDetailsComponent', () => {
-  let component: ShowDetailsComponent;
-  let fixture: ComponentFixture<ShowDetailsComponent>;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      declarations: [ShowDetailsComponent],
-      imports: [HttpClientTestingModule],
+      imports: [HttpClientTestingModule], // ✅ For EmployeeService / HttpClient
       providers: [
         {
           provide: ActivatedRoute,
           useValue: {
             snapshot: {
-              params: { id: '1' },        // ✅ ensure this exists
+              params: { id: '1' },           // ✅ Mock param for ngOnInit
               queryParams: { q: 'test' },
               paramMap: { get: (key: string) => '1' }
             },
-            params: of({ id: '1' }),
+            params: of({ id: '1' }),          // ✅ Observable params
             queryParams: of({ q: 'test' })
           }
         }
       ]
-    });
-
-    fixture = TestBed.createComponent(ShowDetailsComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+    }).compileComponents();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-});
-
-    });
-
+  beforeEach(() => {
     fixture = TestBed.createComponent(ShowDetailsComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
