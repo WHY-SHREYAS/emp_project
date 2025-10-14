@@ -8,7 +8,8 @@ describe('AddEmployeeComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      declarations: [AddEmployeeComponent]
+      declarations: [AddEmployeeComponent],
+      imports: [HttpClientTestingModule]
     });
     fixture = TestBed.createComponent(AddEmployeeComponent);
     component = fixture.componentInstance;
