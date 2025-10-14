@@ -42,6 +42,52 @@ pipeline {
 
                 stage("Test") {
             parallel {
+
+stage("SonarQube Quality Analysis") {
+    steps {
+        withSonarQubeEnv("Sonar") {
+            sh """
+                $SONAR_HOME/bin/sonar-scanner \
+                -Dsonar.projectName=Employee-Management-System \
+                -Dsonar.projectKey=Employee-Management-System \
+                -Dsonar.java.binaries=emp_backend/target/classes \
+                -Dsonar.sources=emp_backend/src/main,employee\\ frontend\\ final/src \
+                -Dsonar.tests=emp_backend/src/test,employee\\ frontend\\ final/src \
+                -Dsonar.test.inclusions=**/*.test.js,**/*.test.jsx,**/*.test.ts,**/*.test.tsx,**/src/test/**/*.java \
+                -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/target/** \
+                -Dsonar.coverage.jacoco.xmlReportPaths=emp_backend/target/site/jacoco/jacoco.xml \
+                -Dsonar.java.coveragePlugin=jacoco
+            """
+        }
+    }
+}
+stage("Check Coverage Files") {
+    steps {
+        sh '''
+            echo "=== Checking Backend Coverage ==="
+            ls -la emp_backend/target/site/jacoco/ || echo "Jacoco directory not found"
+            
+            echo "=== Checking Frontend Coverage ==="
+            ls -la "employee frontend final/coverage/" || echo "Coverage directory not found"
+            
+            echo "=== Workspace Contents ==="
+            find . -name "jacoco.xml" -o -name "lcov.info"
+        '''
+    }
+}
+        stage("Quality Gate Check") {
+            steps {
+                script {
+                    timeout(time: 10, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Quality Gate failed: ${qg.status}"
+                        }
+                        echo "Quality Gate passed successfully!"
+                    }
+                }
+            }
+        }
 stage('Backend Tests') {
     steps {
         dir("emp_backend") {
@@ -63,40 +109,6 @@ stage('Backend Tests') {
                 }
             }
         }
-
-stage("SonarQube Quality Analysis") {
-    steps {
-        withSonarQubeEnv("Sonar") {
-            sh """
-                $SONAR_HOME/bin/sonar-scanner \
-                -Dsonar.projectName=Employee-Management-System \
-                -Dsonar.projectKey=Employee-Management-System \
-                -Dsonar.java.binaries=emp_backend/target/classes \
-                -Dsonar.sources=emp_backend/src/main,employee\\ frontend\\ final/src \
-                -Dsonar.tests=emp_backend/src/test,employee\\ frontend\\ final/src \
-                -Dsonar.test.inclusions=**/*.test.js,**/*.test.jsx,**/*.test.ts,**/*.test.tsx,**/src/test/**/*.java \
-                -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/target/** \
-                -Dsonar.coverage.jacoco.xmlReportPaths=emp_backend/target/site/jacoco/jacoco.xml \
-                -Dsonar.java.coveragePlugin=jacoco
-            """
-        }
-    }
-}
-        
-        stage("Quality Gate Check") {
-            steps {
-                script {
-                    timeout(time: 10, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            error "Quality Gate failed: ${qg.status}"
-                        }
-                        echo "Quality Gate passed successfully!"
-                    }
-                }
-            }
-        }
-
 
         stage("Archive Test Results") {
             steps {
