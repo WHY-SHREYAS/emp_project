@@ -41,7 +41,7 @@ pipeline {
         }
 
 stage("Test") {
-        // parallel {
+        parallel {
                 stage('Backend Tests') {
     steps {
         dir("emp_backend") {
@@ -54,15 +54,15 @@ stage("Test") {
     }
  }
 }
-        //     stage("Frontend Tests") {
-        //             steps {
-        //                 dir('employee frontend final') {
-        //                     sh 'npm test -- --no-watch --code-coverage --browsers=ChromeHeadless'  
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+            stage("Frontend Tests") {
+                    steps {
+                        dir('employee frontend final') {
+                            sh 'npm test -- --no-watch --code-coverage --browsers=ChromeHeadless'  
+                        }
+                    }
+                }
+            }
+        }
         
 
 stage("SonarQube Quality Analysis") {
