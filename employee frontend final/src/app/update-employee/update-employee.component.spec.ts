@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms'; // ✅ Needed if component uses forms
-import { RouterTestingModule } from '@angular/router/testing';      // ✅ Needed if component uses routing
+import { FormsModule } from '@angular/forms'; // ✅ Needed for ngModel/ngForm
 import { UpdateEmployeeComponent } from './update-employee.component';
 
 describe('UpdateEmployeeComponent', () => {
@@ -12,13 +11,13 @@ describe('UpdateEmployeeComponent', () => {
     await TestBed.configureTestingModule({
       declarations: [UpdateEmployeeComponent],
       imports: [
-        HttpClientTestingModule,  // ✅ HttpClient dependency
-        FormsModule,              // ✅ Template-driven forms
-        ReactiveFormsModule,      // ✅ Reactive forms (if used)
-        RouterTestingModule       // ✅ Routing
+        HttpClientTestingModule, // ✅ For EmployeeService / HttpClient
+        FormsModule              // ✅ For template-driven forms
       ]
-    }).compileComponents();
+    }).compileComponents(); // ✅ Ensure compilation
+  });
 
+  beforeEach(() => {
     fixture = TestBed.createComponent(UpdateEmployeeComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
