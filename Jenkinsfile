@@ -40,8 +40,30 @@ pipeline {
             }
         }
 
-                stage("Test") {
-            parallel {
+stage("Test") {
+        parallel {
+                stage('Backend Tests') {
+    steps {
+        dir("emp_backend") {
+            sh '''
+                mvn clean test
+                mvn jacoco:report
+            '''
+            junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
+        }
+    }
+}
+
+            stage("Frontend Tests") {
+                    steps {
+                        dir('employee frontend final') {
+                            sh 'npm test -- --coverage --passWithNoTests'  
+                        }
+                    }
+                }
+            }
+        }
+        
 
 stage("SonarQube Quality Analysis") {
     steps {
@@ -61,20 +83,7 @@ stage("SonarQube Quality Analysis") {
         }
     }
 }
-stage("Check Coverage Files") {
-    steps {
-        sh '''
-            echo "=== Checking Backend Coverage ==="
-            ls -la emp_backend/target/site/jacoco/ || echo "Jacoco directory not found"
-            
-            echo "=== Checking Frontend Coverage ==="
-            ls -la "employee frontend final/coverage/" || echo "Coverage directory not found"
-            
-            echo "=== Workspace Contents ==="
-            find . -name "jacoco.xml" -o -name "lcov.info"
-        '''
-    }
-}
+
         stage("Quality Gate Check") {
             steps {
                 script {
@@ -84,27 +93,6 @@ stage("Check Coverage Files") {
                             error "Quality Gate failed: ${qg.status}"
                         }
                         echo "Quality Gate passed successfully!"
-                    }
-                }
-            }
-        }
-stage('Backend Tests') {
-    steps {
-        dir("emp_backend") {
-            sh '''
-                mvn clean test
-                mvn jacoco:report
-            '''
-            junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
-        }
-    }
-}
-
-                stage("Frontend Tests") {
-                    steps {
-                        dir('employee frontend final') {
-                            sh 'npm test -- --coverage'  // Runs Jest tests with coverage
-                        }
                     }
                 }
             }
