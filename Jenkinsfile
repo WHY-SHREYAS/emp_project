@@ -57,7 +57,7 @@ stage("Test") {
             stage("Frontend Tests") {
                     steps {
                         dir('employee frontend final') {
-                            sh 'npm test -- --coverage --passWithNoTests'  
+                            sh 'npm test -- --no-watch --code-coverage --browsers=ChromeHeadless'  
                         }
                     }
                 }
