@@ -40,6 +40,30 @@ pipeline {
             }
         }
 
+                stage("Test") {
+            parallel {
+stage('Backend Tests') {
+    steps {
+        dir("emp_backend") {
+            sh '''
+                mvn clean test
+                mvn jacoco:report
+            '''
+            junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
+        }
+    }
+}
+
+                stage("Frontend Tests") {
+                    steps {
+                        dir('employee frontend final') {
+                            sh 'npm test -- --coverage'  // Runs Jest tests with coverage
+                        }
+                    }
+                }
+            }
+        }
+
        stage("SonarQube Quality Analysis") {
             steps {
                 withSonarQubeEnv("Sonar") {
@@ -71,29 +95,6 @@ pipeline {
             }
         }
 
-        stage("Test") {
-            parallel {
-stage('Backend Tests') {
-    steps {
-        dir("emp_backend") {
-            sh '''
-                mvn clean test
-                mvn jacoco:report
-            '''
-            junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
-        }
-    }
-}
-
-                stage("Frontend Tests") {
-                    steps {
-                        dir('employee frontend final') {
-                            sh 'npm test -- --coverage'  // Runs Jest tests with coverage
-                        }
-                    }
-                }
-            }
-        }
 
         stage("Archive Test Results") {
             steps {
