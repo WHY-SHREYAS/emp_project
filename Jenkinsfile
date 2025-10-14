@@ -78,6 +78,7 @@ stage("SonarQube Quality Analysis") {
                 -Dsonar.test.inclusions=**/*.test.js,**/*.test.jsx,**/*.test.ts,**/*.test.tsx,**/src/test/**/*.java \
                 -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/target/** \
                 -Dsonar.coverage.jacoco.xmlReportPaths=emp_backend/target/site/jacoco/jacoco.xml \
+                -Dsonar.typescript.lcov.reportPaths=employee\\ frontend\\ final/coverage/lcov.info \
                 -Dsonar.java.coveragePlugin=jacoco
             """
         }
