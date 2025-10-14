@@ -81,7 +81,7 @@ stage('Backend Tests') {
                 mvn clean test
                 mvn jacoco:report
             '''
-            junit 'target/surefire-reports/**/*.xml', allowEmptyResults: true
+            junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
         }
     }
 }
