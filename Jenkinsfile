@@ -10,7 +10,7 @@ pipeline {
         SONAR_HOME = tool "Sonar"
         SONAR_HOST_URL = 'http://43.205.122.223:9000'  
                 
-        DT_URL = 'http://52.66.190.227:8081'  
+        DT_URL = 'http://52.66.190.227:8080'  
         DT_API_KEY = credentials('dependency-track-api-key') 
         DT_PROJECT_NAME = 'Employee-Management-System'
         DT_PROJECT_VERSION = '1.0.0'
