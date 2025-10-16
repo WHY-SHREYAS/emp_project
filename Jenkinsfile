@@ -2,13 +2,23 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven-3.9'        // Use the configured Maven installation
-        nodejs 'node-18'         // Use the configured Node.js installation
+        maven 'maven-3.9'     
+        nodejs 'node-18'         
     }
 
     environment {
         SONAR_HOME = tool "Sonar"
-        SONAR_HOST_URL = 'http://43.205.122.223:9000'  // Replace with your SonarQube server URL
+        SONAR_HOST_URL = 'http://43.205.122.223:9000'  
+                
+        DT_URL = 'http://YOUR_DT_SERVER_IP:8081'  
+        DT_API_KEY = credentials('dependency-track-api-key') 
+        DT_PROJECT_NAME = 'Employee-Management-System'
+        DT_PROJECT_VERSION = '1.0.0'
+        
+        
+        CRITICAL_THRESHOLD = 10
+        HIGH_THRESHOLD = 20
+        MEDIUM_THRESHOLD = 90
     }
 
     stages {
@@ -21,16 +31,16 @@ pipeline {
 
         stage("Build") {
             steps {
-                sh 'ls -la'  // Debug: List contents of the root workspace
+                sh 'ls -la' 
 
-                // Backend build
+               
                 dir('emp_backend') {
                     sh 'ls -la'
                     sh 'mvn -version'
                     sh 'mvn clean compile'
                 }
 
-                // Frontend build
+                
                 dir('employee frontend final') {
                     sh 'ls -la'
                     sh 'node --version'
@@ -63,6 +73,160 @@ pipeline {
                         dir('employee frontend final') {
                             sh 'npm test -- --no-watch --code-coverage --browsers=ChromeHeadless'
                         }
+                    }
+                }
+            }
+        }
+
+        stage("Generate SBOM") {
+            parallel {
+                stage("Backend SBOM") {
+                    steps {
+                        dir('emp_backend') {
+                            sh '''
+                                mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
+                                ls -la target/
+                            '''
+                        }
+                    }
+                }
+
+                stage("Frontend SBOM") {
+                    steps {
+                        dir('employee frontend final') {
+                            sh '''
+                                npm install -g @cyclonedx/cyclonedx-npm
+                                cyclonedx-npm --output-file bom.json
+                                ls -la
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Upload to Dependency-Track") {
+            steps {
+                script {
+                 
+                    dir('emp_backend') {
+                        sh '''
+                            if [ -f "target/bom.xml" ]; then
+                                curl -X "POST" "${DT_URL}/api/v1/bom" \
+                                     -H "Content-Type: multipart/form-data" \
+                                     -H "X-Api-Key: ${DT_API_KEY}" \
+                                     -F "autoCreate=true" \
+                                     -F "projectName=${DT_PROJECT_NAME}-Backend" \
+                                     -F "projectVersion=${DT_PROJECT_VERSION}" \
+                                     -F "bom=@target/bom.xml"
+                            else
+                                echo "Backend SBOM not found!"
+                                exit 1
+                            fi
+                        '''
+                    }
+
+                   
+                    dir('employee frontend final') {
+                        sh '''
+                            if [ -f "bom.json" ]; then
+                                curl -X "POST" "${DT_URL}/api/v1/bom" \
+                                     -H "Content-Type: multipart/form-data" \
+                                     -H "X-Api-Key: ${DT_API_KEY}" \
+                                     -F "autoCreate=true" \
+                                     -F "projectName=${DT_PROJECT_NAME}-Frontend" \
+                                     -F "projectVersion=${DT_PROJECT_VERSION}" \
+                                     -F "bom=@bom.json"
+                            else
+                                echo "Frontend SBOM not found!"
+                                exit 1
+                            fi
+                        '''
+                    }
+
+                    
+                    echo "Waiting for Dependency-Track analysis to complete..."
+                    sleep(time: 5, unit: 'MINUTES')
+                }
+            }
+        }
+
+        stage("Check Vulnerabilities") {
+            steps {
+                script {
+                    def checkVulnerabilities = { projectName ->
+                        def response = sh(
+                            script: """
+                                curl -s -X GET "${DT_URL}/api/v1/metrics/project/current?name=${projectName}&version=${DT_PROJECT_VERSION}" \
+                                -H "X-Api-Key: ${DT_API_KEY}"
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Response for ${projectName}: ${response}"
+
+                        
+                        def metrics = readJSON text: response
+                        
+                        def critical = metrics.critical ?: 0
+                        def high = metrics.high ?: 0
+                        def medium = metrics.medium ?: 0
+                        def low = metrics.low ?: 0
+
+                        echo """
+                        ========================================
+                        Vulnerability Report for ${projectName}
+                        ========================================
+                        Critical: ${critical} (Threshold: ${CRITICAL_THRESHOLD})
+                        High:     ${high} (Threshold: ${HIGH_THRESHOLD})
+                        Medium:   ${medium} (Threshold: ${MEDIUM_THRESHOLD})
+                        Low:      ${low}
+                        ========================================
+                        """
+
+                        def failed = false
+                        def failureReasons = []
+
+                        if (critical > CRITICAL_THRESHOLD.toInteger()) {
+                            failureReasons.add("Critical vulnerabilities: ${critical} (exceeds threshold of ${CRITICAL_THRESHOLD})")
+                            failed = true
+                        }
+                        if (high > HIGH_THRESHOLD.toInteger()) {
+                            failureReasons.add("High vulnerabilities: ${high} (exceeds threshold of ${HIGH_THRESHOLD})")
+                            failed = true
+                        }
+                        if (medium > MEDIUM_THRESHOLD.toInteger()) {
+                            failureReasons.add("Medium vulnerabilities: ${medium} (exceeds threshold of ${MEDIUM_THRESHOLD})")
+                            failed = true
+                        }
+
+                        if (failed) {
+                            error("Build failed for ${projectName} due to:\n" + failureReasons.join('\n'))
+                        } else {
+                            echo "${projectName} passed vulnerability checks!"
+                        }
+
+                        return [critical: critical, high: high, medium: medium, low: low]
+                    }
+
+                    
+                    try {
+                        def backendMetrics = checkVulnerabilities("${DT_PROJECT_NAME}-Backend")
+                        def frontendMetrics = checkVulnerabilities("${DT_PROJECT_NAME}-Frontend")
+
+                        echo """
+                        ========================================
+                        Combined Vulnerability Summary
+                        ========================================
+                        Total Critical: ${backendMetrics.critical + frontendMetrics.critical}
+                        Total High:     ${backendMetrics.high + frontendMetrics.high}
+                        Total Medium:   ${backendMetrics.medium + frontendMetrics.medium}
+                        Total Low:      ${backendMetrics.low + frontendMetrics.low}
+                        ========================================
+                        """
+                    } catch (Exception e) {
+                        echo "Error checking vulnerabilities: ${e.message}"
+                        error("Vulnerability check failed!")
                     }
                 }
             }
@@ -104,7 +268,7 @@ pipeline {
 
         stage("Archive Test Results") {
             steps {
-                junit 'emp_backend/target/surefire-reports/*.xml'  // Corrected backend report path
+                junit 'emp_backend/target/surefire-reports/*.xml'
                 archiveArtifacts artifacts: 'employee frontend final/coverage/**', allowEmptyArchive: true
             }
         }
