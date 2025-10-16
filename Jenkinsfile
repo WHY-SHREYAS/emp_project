@@ -108,7 +108,20 @@ pipeline {
             }
         }
 
-        stage("Upload to Dependency-Track") {
+
+stage("Connectivity Test") {
+    steps {
+        sh '''
+            echo "Testing connectivity to DT..."
+            curl -v --max-time 10 http://52.66.190.227:8080/
+            echo ""
+            echo "Checking if port 8080 is reachable..."
+            nc -zv 52.66.190.227 8080
+        '''
+    }
+}
+
+       stage("Upload to Dependency-Track") {
             steps {
                 script {
                     try {
