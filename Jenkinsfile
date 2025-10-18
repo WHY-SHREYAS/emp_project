@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         SONAR_HOME = tool "Sonar"
-        SONAR_HOST_URL = 'http://43.205.122.223:9000'  
+        SONAR_HOST_URL = 'http://13.235.40.181:9000'  
                 
         DT_URL = 'http://13.235.40.181:8085'  
         DT_API_KEY = credentials('dependency-track-api-key') 
