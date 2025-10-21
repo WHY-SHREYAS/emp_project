@@ -18,6 +18,14 @@ pipeline {
         CRITICAL_THRESHOLD = 10
         HIGH_THRESHOLD = 20
         MEDIUM_THRESHOLD = 90
+
+        // Docker Configuration
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKERHUB_USER = "${env.DOCKERHUB_CREDENTIALS_USR}"
+        DOCKERHUB_PASS = "${env.DOCKERHUB_CREDENTIALS_PSW}"
+        DOCKER_BACKEND_IMAGE = "${DOCKERHUB_USER}/emp-backend"
+        DOCKER_FRONTEND_IMAGE = "${DOCKERHUB_USER}/emp-frontend"
+        DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -108,149 +116,6 @@ pipeline {
             }
         }
 
-       // stage("Upload to Dependency-Track") {
-       //      steps {
-       //          script {
-       //              try {
-       //                  // Backend SBOM Upload
-       //                  dir('emp_backend') {
-       //                      sh '''
-       //                          if [ -f "target/bom.xml" ]; then
-       //                              echo "Uploading Backend SBOM to Dependency-Track..."
-       //                              curl -v -X POST "${DT_URL}/api/v1/bom" \
-       //                                   -H "Content-Type: multipart/form-data" \
-       //                                   -H "X-Api-Key: ${DT_API_KEY}" \
-       //                                   -F "autoCreate=true" \
-       //                                   -F "projectName=${DT_PROJECT_NAME}-Backend" \
-       //                                   -F "projectVersion=${DT_PROJECT_VERSION}" \
-       //                                   -F "bom=@target/bom.xml"
-       //                              echo "Backend SBOM uploaded successfully"
-       //                          else
-       //                              echo "ERROR: Backend SBOM not found at target/bom.xml"
-       //                              exit 1
-       //                          fi
-       //                      '''
-       //                  }
-
-       //                  // Frontend SBOM Upload
-       //                  dir('employee frontend final') {
-       //                      sh '''
-       //                          if [ -f "bom.json" ]; then
-       //                              echo "Uploading Frontend SBOM to Dependency-Track..."
-       //                              curl -v -X POST "${DT_URL}/api/v1/bom" \
-       //                                   -H "Content-Type: multipart/form-data" \
-       //                                   -H "X-Api-Key: ${DT_API_KEY}" \
-       //                                   -F "autoCreate=true" \
-       //                                   -F "projectName=${DT_PROJECT_NAME}-Frontend" \
-       //                                   -F "projectVersion=${DT_PROJECT_VERSION}" \
-       //                                   -F "bom=@bom.json"
-       //                              echo "Frontend SBOM uploaded successfully"
-       //                          else
-       //                              echo "ERROR: Frontend SBOM not found at bom.json"
-       //                              exit 1
-       //                          fi
-       //                      '''
-       //                  }
-
-       //                  echo "Waiting for Dependency-Track to process SBOMs..."
-       //                  sleep(time: 3, unit: 'MINUTES')
-       //              } catch (Exception e) {
-       //                  echo "Error uploading SBOMs: ${e.message}"
-       //                  throw e
-       //              }
-       //          }
-       //      }
-       //  }
-
-       //  stage("Check Vulnerabilities") {
-       //      steps {
-       //          script {
-       //              def checkVulnerabilities = { projectName ->
-       //                  try {
-       //                      def response = sh(
-       //                          script: """
-       //                              curl -s -X GET "${DT_URL}/api/v1/metrics/project?name=${projectName}&version=${DT_PROJECT_VERSION}" \
-       //                              -H "X-Api-Key: ${DT_API_KEY}"
-       //                          """,
-       //                          returnStdout: true
-       //                      ).trim()
-
-       //                      echo "Metrics Response: ${response}"
-
-       //                      if (!response || response.isEmpty()) {
-       //                          echo "WARNING: No metrics returned for ${projectName}. Project may still be processing."
-       //                          return [critical: 0, high: 0, medium: 0, low: 0]
-       //                      }
-
-       //                      def metrics = readJSON text: response
-                            
-       //                      def critical = metrics.critical ?: 0
-       //                      def high = metrics.high ?: 0
-       //                      def medium = metrics.medium ?: 0
-       //                      def low = metrics.low ?: 0
-
-       //                      echo """
-       //                      ========================================
-       //                      Vulnerability Report for ${projectName}
-       //                      ========================================
-       //                      Critical: ${critical} (Threshold: ${CRITICAL_THRESHOLD})
-       //                      High:     ${high} (Threshold: ${HIGH_THRESHOLD})
-       //                      Medium:   ${medium} (Threshold: ${MEDIUM_THRESHOLD})
-       //                      Low:      ${low}
-       //                      ========================================
-       //                      """
-
-       //                      def failed = false
-       //                      def failureReasons = []
-
-       //                      if (critical > CRITICAL_THRESHOLD.toInteger()) {
-       //                          failureReasons.add("Critical vulnerabilities: ${critical} (exceeds threshold of ${CRITICAL_THRESHOLD})")
-       //                          failed = true
-       //                      }
-       //                      if (high > HIGH_THRESHOLD.toInteger()) {
-       //                          failureReasons.add("High vulnerabilities: ${high} (exceeds threshold of ${HIGH_THRESHOLD})")
-       //                          failed = true
-       //                      }
-       //                      if (medium > MEDIUM_THRESHOLD.toInteger()) {
-       //                          failureReasons.add("Medium vulnerabilities: ${medium} (exceeds threshold of ${MEDIUM_THRESHOLD})")
-       //                          failed = true
-       //                      }
-
-       //                      if (failed) {
-       //                          error("Build failed for ${projectName} due to:\n" + failureReasons.join('\n'))
-       //                      } else {
-       //                          echo "${projectName} passed vulnerability checks!"
-       //                      }
-
-       //                      return [critical: critical, high: high, medium: medium, low: low]
-       //                  } catch (Exception e) {
-       //                      echo "Error checking vulnerabilities for ${projectName}: ${e.message}"
-       //                      return [critical: 0, high: 0, medium: 0, low: 0]
-       //                  }
-       //              }
-
-       //              try {
-       //                  def backendMetrics = checkVulnerabilities("${DT_PROJECT_NAME}-Backend")
-       //                  def frontendMetrics = checkVulnerabilities("${DT_PROJECT_NAME}-Frontend")
-
-       //                  echo """
-       //                  ========================================
-       //                  Combined Vulnerability Summary
-       //                  ========================================
-       //                  Total Critical: ${backendMetrics.critical + frontendMetrics.critical}
-       //                  Total High:     ${backendMetrics.high + frontendMetrics.high}
-       //                  Total Medium:   ${backendMetrics.medium + frontendMetrics.medium}
-       //                  Total Low:      ${backendMetrics.low + frontendMetrics.low}
-       //                  ========================================
-       //                  """
-       //              } catch (Exception e) {
-       //                  echo "Error in vulnerability checks: ${e.message}"
-       //                  // Don't fail the build here, just warn
-       //                  currentBuild.result = 'UNSTABLE'
-       //              }
-       //          }
-       //      }
-       //  }
 
         stage("SonarQube Quality Analysis") {
             steps {
@@ -351,6 +216,41 @@ pipeline {
             }
         }
 
+        stage("Cleanup Docker Images") {
+            steps {
+                script {
+                    echo "Cleaning up local Docker images..."
+                    sh """
+                        docker rmi ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG} || true
+                        docker rmi ${DOCKER_BACKEND_IMAGE}:latest || true
+                        docker rmi ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG} || true
+                        docker rmi ${DOCKER_FRONTEND_IMAGE}:latest || true
+                        docker logout
+                    """
+                    echo "Cleanup completed!"
+                }
+            }
+        }
+
+        stage("Deploy") {
+            steps {
+                echo "Deploy stage completed successfully!"
+                echo """
+                ========================================
+                Deployment Information
+                ========================================
+                Backend Image: ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}
+                Frontend Image: ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}
+                
+                Pull commands:
+                docker pull ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}
+                docker pull ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}
+                ========================================
+                """
+            }
+        }
+   }
+
    post {
         success {
             echo "Pipeline completed successfully!"
@@ -364,6 +264,4 @@ pipeline {
             cleanWs()
         }
     }
-
- }
-
+}
