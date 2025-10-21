@@ -293,10 +293,77 @@ pipeline {
             }
         }
 
-        stage("Deploy") {
-            steps {
-                echo "Deploy stage completed successfully!"
+        stage("Build Docker Images") {
+            parallel {
+                stage("Build Backend Docker Image") {
+                    steps {
+                        script {
+                            dir('emp_backend') {
+                                echo "Building Backend Docker Image..."
+                                sh """
+                                    docker build -t ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG} .
+                                    docker tag ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG} ${DOCKER_BACKEND_IMAGE}:latest
+                                """
+                                echo "Backend Docker Image built successfully!"
+                            }
+                        }
+                    }
+                }
+
+                stage("Build Frontend Docker Image") {
+                    steps {
+                        script {
+                            dir('employee frontend final') {
+                                echo "Building Frontend Docker Image..."
+                                sh """
+                                    docker build -t ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG} .
+                                    docker tag ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG} ${DOCKER_FRONTEND_IMAGE}:latest
+                                """
+                                echo "Frontend Docker Image built successfully!"
+                            }
+                        }
+                    }
+                }
             }
         }
-   }
-}
+
+        stage("Push Docker Images to DockerHub") {
+            steps {
+                script {
+                    echo "Logging into DockerHub..."
+                    sh """
+                        echo \$DOCKERHUB_PASS | docker login -u \$DOCKERHUB_USER --password-stdin
+                    """
+
+                    echo "Pushing Docker Images..."
+                    sh """
+                        docker push ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}
+                        docker push ${DOCKER_BACKEND_IMAGE}:latest
+                        
+                        docker push ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}
+                        docker push ${DOCKER_FRONTEND_IMAGE}:latest
+                    """
+                    
+                    echo "Docker Images pushed successfully!"
+                    echo "Backend Image: ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}"
+                    echo "Frontend Image: ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}"
+                }
+            }
+        }
+
+   post {
+        success {
+            echo "Pipeline completed successfully!"
+            echo "Docker images are available on DockerHub"
+        }
+        failure {
+            echo "Pipeline failed! Check logs for details."
+        }
+        always {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
+    }
+
+ }
+
