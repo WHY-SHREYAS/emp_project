@@ -112,37 +112,6 @@ pipeline {
             }
         }
 
-     oCreate=true" \
-                                         -F "projectName=${DT_PROJECT_NAME}-Backend" \
-                                         -F "projectVersion=${DT_PROJECT_VERSION}" \
-                                         -F "bom=@target/bom.xml"
-                                    echo "Backend SBOM uploaded successfully"
-                                else
-                                    echo "ERROR: Backend SBOM not found at target/bom.xml"
-                                    exit 1
-                                fi
-                            '''
-                        }
-
-                        // Frontend SBOM Upload
-                        dir('employee frontend final') {
-                            sh '''
-                                if [ -f "bom.json" ]; then
-                                    echo "Uploading Frontend SBOM to Dependency-Track..."
-                                    curl -v -X POST "${DT_URL}/api/v1/bom" \
-                                         -H "Content-Type: multipart/form-data" \
-                                         -H "X-Api-Key: ${DT_API_KEY}" \
-                                         -F "autoCreate=true" \
-                                         -F "projectName=${DT_PROJECT_NAME}-Frontend" \
-                                         -F "projectVersion=${DT_PROJECT_VERSION}" \
-                                         -F "bom=@bom.json"
-                                    echo "Frontend SBOM uploaded successfully"
-                                else
-                                    echo "ERROR: Frontend SBOM not found at bom.json"
-                                    exit 1
-                                fi
-                            '''
-                        }
 
 
         stage("SonarQube Quality Analysis") {
@@ -234,3 +203,4 @@ stage("Build & Push Docker Images") {
         }
     }
 }
+    }}
