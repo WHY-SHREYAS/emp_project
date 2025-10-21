@@ -19,13 +19,9 @@ pipeline {
         HIGH_THRESHOLD = 20
         MEDIUM_THRESHOLD = 90
 
-        // Docker Configuration
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKERHUB_USER = "${env.DOCKERHUB_CREDENTIALS_USR}"
-        DOCKERHUB_PASS = "${env.DOCKERHUB_CREDENTIALS_PSW}"
-        DOCKER_BACKEND_IMAGE = "${DOCKERHUB_USER}/emp_backend"
-        DOCKER_FRONTEND_IMAGE = "${DOCKERHUB_USER}/emp frontend final"
-        DOCKER_TAG = "${BUILD_NUMBER}"
+    	DOCKER_BACKEND_IMAGE = "emp_backend"
+    	DOCKER_FRONTEND_IMAGE = "emp_frontend_final"
+    	DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -116,6 +112,38 @@ pipeline {
             }
         }
 
+     oCreate=true" \
+                                         -F "projectName=${DT_PROJECT_NAME}-Backend" \
+                                         -F "projectVersion=${DT_PROJECT_VERSION}" \
+                                         -F "bom=@target/bom.xml"
+                                    echo "Backend SBOM uploaded successfully"
+                                else
+                                    echo "ERROR: Backend SBOM not found at target/bom.xml"
+                                    exit 1
+                                fi
+                            '''
+                        }
+
+                        // Frontend SBOM Upload
+                        dir('employee frontend final') {
+                            sh '''
+                                if [ -f "bom.json" ]; then
+                                    echo "Uploading Frontend SBOM to Dependency-Track..."
+                                    curl -v -X POST "${DT_URL}/api/v1/bom" \
+                                         -H "Content-Type: multipart/form-data" \
+                                         -H "X-Api-Key: ${DT_API_KEY}" \
+                                         -F "autoCreate=true" \
+                                         -F "projectName=${DT_PROJECT_NAME}-Frontend" \
+                                         -F "projectVersion=${DT_PROJECT_VERSION}" \
+                                         -F "bom=@bom.json"
+                                    echo "Frontend SBOM uploaded successfully"
+                                else
+                                    echo "ERROR: Frontend SBOM not found at bom.json"
+                                    exit 1
+                                fi
+                            '''
+                        }
+
 
         stage("SonarQube Quality Analysis") {
             steps {
@@ -158,98 +186,39 @@ pipeline {
             }
         }
 
-        stage("Build Docker Images") {
-            parallel {
-                stage("Build Backend Docker Image") {
-                    steps {
-                        script {
-                            dir('emp_backend') {
-                                echo "Building Backend Docker Image..."
-                                sh """
-                                    docker build -t ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG} .
-                                    docker tag ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG} ${DOCKER_BACKEND_IMAGE}:latest
-                                """
-                                echo "Backend Docker Image built successfully!"
-                            }
-                        }
-                    }
-                }
+stage("Build & Push Docker Images") {
+    steps {
+        script {
+            dir('emp_backend') {
+                sh '''
+                    echo "Building backend Docker image..."
+                    docker build -t emp_backend:${DOCKER_TAG} .
+                '''
+            }
 
-                stage("Build Frontend Docker Image") {
-                    steps {
-                        script {
-                            dir('employee frontend final') {
-                                echo "Building Frontend Docker Image..."
-                                sh """
-                                    docker build -t ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG} .
-                                    docker tag ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG} ${DOCKER_FRONTEND_IMAGE}:latest
-                                """
-                                echo "Frontend Docker Image built successfully!"
-                            }
-                        }
-                    }
-                }
+            dir('employee frontend final') {
+                sh '''
+                    echo "Building frontend Docker image..."
+                    docker build -t emp_frontend_final:${DOCKER_TAG} .
+                '''
+            }
+
+            withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                    docker tag emp_backend:${DOCKER_TAG} $DOCKER_USER/emp_backend:${DOCKER_TAG}
+                    docker tag emp_frontend_final:${DOCKER_TAG} $DOCKER_USER/emp_frontend_final:${DOCKER_TAG}
+
+                    docker push $DOCKER_USER/emp_backend:${DOCKER_TAG}
+                    docker push $DOCKER_USER/emp_frontend_final:${DOCKER_TAG}
+
+                    echo "Docker images pushed successfully!"
+                '''
             }
         }
+    }
 
-        stage("Push Docker Images to DockerHub") {
-            steps {
-                script {
-                    echo "Logging into DockerHub..."
-                    sh """
-                        echo \$DOCKERHUB_PASS | docker login -u \$DOCKERHUB_USER --password-stdin
-                    """
-
-                    echo "Pushing Docker Images..."
-                    sh """
-                        docker push ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}
-                        docker push ${DOCKER_BACKEND_IMAGE}:latest
-                        
-                        docker push ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}
-                        docker push ${DOCKER_FRONTEND_IMAGE}:latest
-                    """
-                    
-                    echo "Docker Images pushed successfully!"
-                    echo "Backend Image: ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}"
-                    echo "Frontend Image: ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}"
-                }
-            }
-        }
-
-        stage("Cleanup Docker Images") {
-            steps {
-                script {
-                    echo "Cleaning up local Docker images..."
-                    sh """
-                        docker rmi ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG} || true
-                        docker rmi ${DOCKER_BACKEND_IMAGE}:latest || true
-                        docker rmi ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG} || true
-                        docker rmi ${DOCKER_FRONTEND_IMAGE}:latest || true
-                        docker logout
-                    """
-                    echo "Cleanup completed!"
-                }
-            }
-        }
-
-        stage("Deploy") {
-            steps {
-                echo "Deploy stage completed successfully!"
-                echo """
-                ========================================
-                Deployment Information
-                ========================================
-                Backend Image: ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}
-                Frontend Image: ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}
-                
-                Pull commands:
-                docker pull ${DOCKER_BACKEND_IMAGE}:${DOCKER_TAG}
-                docker pull ${DOCKER_FRONTEND_IMAGE}:${DOCKER_TAG}
-                ========================================
-                """
-            }
-        }
-   }
 
    post {
         success {
