@@ -23,8 +23,8 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         DOCKERHUB_USER = "${env.DOCKERHUB_CREDENTIALS_USR}"
         DOCKERHUB_PASS = "${env.DOCKERHUB_CREDENTIALS_PSW}"
-        DOCKER_BACKEND_IMAGE = "${DOCKERHUB_USER}/emp-backend"
-        DOCKER_FRONTEND_IMAGE = "${DOCKERHUB_USER}/emp-frontend"
+        DOCKER_BACKEND_IMAGE = "${DOCKERHUB_USER}/emp_backend"
+        DOCKER_FRONTEND_IMAGE = "${DOCKERHUB_USER}/emp frontend final"
         DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
