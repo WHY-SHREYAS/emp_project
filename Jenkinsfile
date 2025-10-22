@@ -113,7 +113,54 @@ pipeline {
         }
 
 
+                stage("Upload SBOM to Dependency-Track") {
+            steps {
+                script {
+                    echo "Uploading Backend SBOM..."
+                    // Upload Backend SBOM (XML format)
+                    sh "curl -X POST -H \"X-Api-Key: ${DT_API_KEY}\" -F \"project=${DT_PROJECT_NAME}\" -F \"version=${DT_PROJECT_VERSION}\" -F \"bom=@emp_backend/target/bom.xml\" ${DT_URL}/api/v1/bom"
 
+                    echo "Uploading Frontend SBOM..."
+                    // Upload Frontend SBOM (JSON format)
+                    sh "curl -X POST -H \"X-Api-Key: ${DT_API_KEY}\" -F \"project=${DT_PROJECT_NAME}\" -F \"version=${DT_PROJECT_VERSION}\" -F \"bom=@employee\\ frontend\\ final/bom.json\" ${DT_URL}/api/v1/bom"
+                }
+            }
+        }
+
+        stage("Dependency-Track Quality Gate") {
+            steps {
+                script {
+                    // Use Dependency-Track API to fetch project metrics
+                    def project_metrics = sh(
+                        script: "curl -s -X GET -H \"X-Api-Key: ${DT_API_KEY}\" ${DT_URL}/api/v1/metrics/project/${DT_PROJECT_NAME}/${DT_PROJECT_VERSION}/current",
+                        returnStdout: true
+                    ).trim()
+
+                    def jsonSlurper = new groovy.json.JsonSlurper()
+                    def metrics = jsonSlurper.parseText(project_metrics).find { it.project == DT_PROJECT_NAME && it.version == DT_PROJECT_VERSION }
+
+                    if (metrics) {
+                        def critical_vulns = metrics.vulnerabilities.critical as int
+                        def high_vulns = metrics.vulnerabilities.high as int
+                        def medium_vulns = metrics.vulnerabilities.medium as int
+
+                        echo "Dependency-Track Vulnerabilities Found:"
+                        echo "  - Critical: ${critical_vulns} (Threshold: ${CRITICAL_THRESHOLD})"
+                        echo "  - High: ${high_vulns} (Threshold: ${HIGH_THRESHOLD})"
+                        echo "  - Medium: ${medium_vulns} (Threshold: ${MEDIUM_THRESHOLD})"
+
+                        if (critical_vulns > CRITICAL_THRESHOLD || high_vulns > HIGH_THRESHOLD || medium_vulns > MEDIUM_THRESHOLD) {
+                            error "Dependency-Track Quality Gate Failed! Vulnerability count exceeds defined thresholds."
+                        } else {
+                            echo "Dependency-Track Quality Gate Passed! Vulnerability counts are within acceptable limits."
+                        }
+                    } else {
+                        // This might happen if the analysis is not complete or project name/version is wrong
+                        error "Could not retrieve Dependency-Track metrics. Check project name, version, and server logs."
+                    }
+                }
+            }
+        }
         stage("SonarQube Quality Analysis") {
             steps {
                 withSonarQubeEnv("Sonar") {
