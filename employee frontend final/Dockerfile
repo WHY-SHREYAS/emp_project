@@ -16,4 +16,4 @@ RUN npm install -g http-server
 
 EXPOSE 4200
 
-CMD ["http-server", "dist", "-p", "4200", "-a", "0.0.0.0"]
+CMD ["http-server", "dist/employee-frontend-final", "-p", "4200", "-a", "0.0.0.0"]
