@@ -155,20 +155,23 @@ pipeline {
 stage("Build & Push Docker Images") {
     steps {
         script {
+            // --- Backend Build ---
             dir('emp_backend') {
                 sh '''
-                    echo "Building backend Docker image..."
+                    echo "Building backend Docker image on default port 8080..."
                     docker build -t emp_backend:${DOCKER_TAG} .
                 '''
             }
 
+            // --- Frontend Build ---
             dir('employee frontend final') {
                 sh '''
-                    echo "Building frontend Docker image..."
+                    echo "Building frontend Docker image on default port 4200..."
                     docker build -t emp_frontend_final:${DOCKER_TAG} .
                 '''
             }
 
+            // --- Push to DockerHub ---
             withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                 sh '''
                     echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
@@ -179,11 +182,13 @@ stage("Build & Push Docker Images") {
                     docker push $DOCKER_USER/emp_backend:${DOCKER_TAG}
                     docker push $DOCKER_USER/emp_frontend_final:${DOCKER_TAG}
 
-                    echo "Docker images pushed successfully!"
+                    echo "✅ Docker images built and pushed successfully!"
                 '''
             }
         }
     }
+}
+
 
 
    post {
