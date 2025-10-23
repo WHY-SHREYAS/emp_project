@@ -204,22 +204,20 @@ stage("Build & Push Docker Images") {
             }
         }
         
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    echo 'Deploying to Kubernetes...'
-                    
-                    // If Jenkins is on same server as K8s
-                    sh """
-                        kubectl apply -f k8s/backend-deployment.yaml
-                        kubectl apply -f k8s/frontend-deployment.yaml
-                        kubectl rollout status deployment/backend-deployment
-                        kubectl rollout status deployment/frontend-deployment
-                    """
-                  
-                }
-            }
+ stage('Deploy to Kubernetes') {
+    steps {
+        script {
+            echo 'Deploying to Kubernetes...'
+            sh """
+                export KUBECONFIG=/var/lib/jenkins/.kube/config
+                kubectl apply -f k8s/backend-deployment.yaml
+                kubectl apply -f k8s/frontend-deployment.yaml
+                kubectl rollout status deployment/backend-deployment
+                kubectl rollout status deployment/frontend-deployment
+            """
         }
+    }
+}
         
         stage('Setup Port Forwarding') {
             steps {
