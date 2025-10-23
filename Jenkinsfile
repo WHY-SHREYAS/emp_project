@@ -191,18 +191,83 @@ stage("Build & Push Docker Images") {
 
 
 
-   post {
+
+       stage('Update K8s Deployment Files') {
+            steps {
+                script {
+                    echo 'Updating Kubernetes deployment files with new build number...'
+                    sh """
+                        sed -i 's|BUILD_NUMBER|${BUILD_NUMBER}|g' k8s/backend-deployment.yaml
+                        sed -i 's|BUILD_NUMBER|${BUILD_NUMBER}|g' k8s/frontend-deployment.yaml
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    echo 'Deploying to Kubernetes...'
+                    
+                    // If Jenkins is on same server as K8s
+                    sh """
+                        kubectl apply -f k8s/backend-deployment.yaml
+                        kubectl apply -f k8s/frontend-deployment.yaml
+                        kubectl rollout status deployment/backend-deployment
+                        kubectl rollout status deployment/frontend-deployment
+                    """
+                  
+                }
+            }
+        }
+        
+        stage('Setup Port Forwarding') {
+            steps {
+                script {
+                    echo 'Setting up port forwarding...'
+                    sh """
+                        # Kill existing port-forwards
+                        pkill -f 'port-forward' || true
+                        
+                        # Start new port-forwards in background
+                        nohup kubectl port-forward --address 0.0.0.0 service/backend-service 31001:8080 > backend-forward.log 2>&1 &
+                        nohup kubectl port-forward --address 0.0.0.0 service/frontend-service 31000:4200 > frontend-forward.log 2>&1 &
+                        
+                        sleep 5
+                    """
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo 'Verifying deployment...'
+                    sh """
+                        kubectl get pods
+                        kubectl get services
+                        echo "Frontend: http://13.235.40.181:31000"
+                        echo "Backend: http://13.235.40.181:31001"
+                    """
+                }
+            }
+        }
+    }
+
+
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh 'docker logout'
+        }
         success {
-            echo "Pipeline completed successfully!"
-            echo "Docker images are available on DockerHub"
+            echo 'Pipeline completed successfully!'
+            echo 'Application is now running on Kubernetes'
+            echo 'Frontend: http://13.235.40.181:31000'
+            echo 'Backend: http://13.235.40.181:31001'
         }
         failure {
-            echo "Pipeline failed! Check logs for details."
-        }
-        always {
-            echo "Cleaning up workspace..."
-            cleanWs()
+            echo 'Pipeline failed! Check the logs above.'
         }
     }
 }
-    }}
