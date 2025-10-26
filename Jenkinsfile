@@ -19,9 +19,9 @@ pipeline {
         HIGH_THRESHOLD = 20
         MEDIUM_THRESHOLD = 90
 
-    	DOCKER_BACKEND_IMAGE = "emp_backend"
-    	DOCKER_FRONTEND_IMAGE = "emp_frontend_final"
-    	DOCKER_TAG = "${BUILD_NUMBER}"
+        DOCKER_BACKEND_IMAGE = "emp_backend"
+        DOCKER_FRONTEND_IMAGE = "emp_frontend_final"
+        DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -272,10 +272,10 @@ ${violationMsg}
                 }
             }
         }
-    }
+
         stage("SonarQube Quality Analysis") {
             steps {
-               withSonarQubeEnv("Sonar") {
+                withSonarQubeEnv("Sonar") {
                     sh """
                         $SONAR_HOME/bin/sonar-scanner \
                         -Dsonar.projectName=Employee-Management-System \
@@ -314,47 +314,44 @@ ${violationMsg}
             }
         }
 
-stage("Build & Push Docker Images") {
-    steps {
-        script {
-            // --- Backend Build ---
-            dir('emp_backend') {
-                sh '''
-                    echo "Building backend Docker image on default port 8080..."
-                    docker build -t emp_backend:${DOCKER_TAG} .
-                '''
-            }
+        stage("Build & Push Docker Images") {
+            steps {
+                script {
+                    // --- Backend Build ---
+                    dir('emp_backend') {
+                        sh '''
+                            echo "Building backend Docker image on default port 8080..."
+                            docker build -t emp_backend:${DOCKER_TAG} .
+                        '''
+                    }
 
-            // --- Frontend Build ---
-            dir('employee frontend final') {
-                sh '''
-                    echo "Building frontend Docker image on default port 4200..."
-                    docker build -t emp_frontend_final:${DOCKER_TAG} .
-                '''
-            }
+                    // --- Frontend Build ---
+                    dir('employee frontend final') {
+                        sh '''
+                            echo "Building frontend Docker image on default port 4200..."
+                            docker build -t emp_frontend_final:${DOCKER_TAG} .
+                        '''
+                    }
 
-            // --- Push to DockerHub ---
-            withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                sh '''
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    // --- Push to DockerHub ---
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 
-                    docker tag emp_backend:${DOCKER_TAG} $DOCKER_USER/emp_backend:${DOCKER_TAG}
-                    docker tag emp_frontend_final:${DOCKER_TAG} $DOCKER_USER/emp_frontend_final:${DOCKER_TAG}
+                            docker tag emp_backend:${DOCKER_TAG} $DOCKER_USER/emp_backend:${DOCKER_TAG}
+                            docker tag emp_frontend_final:${DOCKER_TAG} $DOCKER_USER/emp_frontend_final:${DOCKER_TAG}
 
-                    docker push $DOCKER_USER/emp_backend:${DOCKER_TAG}
-                    docker push $DOCKER_USER/emp_frontend_final:${DOCKER_TAG}
+                            docker push $DOCKER_USER/emp_backend:${DOCKER_TAG}
+                            docker push $DOCKER_USER/emp_frontend_final:${DOCKER_TAG}
 
-                    echo "✅ Docker images built and pushed successfully!"
-                '''
+                            echo "✅ Docker images built and pushed successfully!"
+                        '''
+                    }
+                }
             }
         }
-    }
-}
 
-
-
-
-       stage('Update K8s Deployment Files') {
+        stage('Update K8s Deployment Files') {
             steps {
                 script {
                     echo 'Updating Kubernetes deployment files with new build number...'
@@ -366,20 +363,20 @@ stage("Build & Push Docker Images") {
             }
         }
         
- stage('Deploy to Kubernetes') {
-    steps {
-        script {
-            echo 'Deploying to Kubernetes...'
-            sh """
-                export KUBECONFIG=/var/lib/jenkins/.kube/config
-                kubectl apply -f k8s/backend-deployment.yaml
-                kubectl apply -f k8s/frontend-deployment.yaml
-                kubectl rollout status deployment/backend-deployment
-                kubectl rollout status deployment/frontend-deployment
-            """
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    echo 'Deploying to Kubernetes...'
+                    sh """
+                        export KUBECONFIG=/var/lib/jenkins/.kube/config
+                        kubectl apply -f k8s/backend-deployment.yaml
+                        kubectl apply -f k8s/frontend-deployment.yaml
+                        kubectl rollout status deployment/backend-deployment
+                        kubectl rollout status deployment/frontend-deployment
+                    """
+                }
+            }
         }
-    }
-}
         
         stage('Setup Port Forwarding') {
             steps {
@@ -414,7 +411,6 @@ stage("Build & Push Docker Images") {
         }
     }
 
-
     post {
         always {
             echo 'Cleaning up...'
@@ -430,3 +426,4 @@ stage("Build & Push Docker Images") {
             echo 'Pipeline failed! Check the logs above.'
         }
     }
+}
