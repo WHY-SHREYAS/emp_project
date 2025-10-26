@@ -10,7 +10,7 @@ pipeline {
         SONAR_HOME = tool "Sonar"
         SONAR_HOST_URL = 'http://13.235.40.181:9000'  
                 
-        DT_URL = 'http://13.235.40.181:8085'  
+        DT_URL = 'http://65.0.13.40:8080'  
         DT_API_KEY = credentials('dependency-track-api-key') 
         DT_PROJECT_NAME = 'Employee-Management-System'
         DT_PROJECT_VERSION = '1.0.0'
@@ -111,6 +111,168 @@ pipeline {
                 }
             }
         }
+
+        stage("Upload SBOMs to Dependency-Track") {
+            parallel {
+                stage("Upload Backend SBOM") {
+                    steps {
+                        dir('emp_backend') {
+                            script {
+                                def bomContent = readFile('target/bom.xml')
+                                def bomBase64 = bomContent.bytes.encodeBase64().toString()
+                                
+                                def response = sh(
+                                    script: """
+                                        curl -X POST '${DT_URL}/api/v1/bom' \\
+                                          -H 'Content-Type: application/json' \\
+                                          -H 'X-Api-Key: ${DT_API_KEY}' \\
+                                          -d '{
+                                            "project": "${DT_PROJECT_NAME}",
+                                            "projectVersion": "${DT_PROJECT_VERSION}",
+                                            "autoCreate": true,
+                                            "bom": "${bomBase64}"
+                                          }' \\
+                                          -w '%{http_code}' \\
+                                          -o response.json
+                                    """,
+                                    returnStdout: true
+                                ).trim()
+                                
+                                if (response == '200') {
+                                    echo "✅ Backend SBOM uploaded successfully"
+                                } else {
+                                    error "❌ Failed to upload Backend SBOM. HTTP Status: ${response}"
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                stage("Upload Frontend SBOM") {
+                    steps {
+                        dir('employee frontend final') {
+                            script {
+                                def bomContent = readFile('bom.json')
+                                def bomBase64 = bomContent.bytes.encodeBase64().toString()
+                                
+                                def response = sh(
+                                    script: """
+                                        curl -X POST '${DT_URL}/api/v1/bom' \\
+                                          -H 'Content-Type: application/json' \\
+                                          -H 'X-Api-Key: ${DT_API_KEY}' \\
+                                          -d '{
+                                            "project": "${DT_PROJECT_NAME}",
+                                            "projectVersion": "${DT_PROJECT_VERSION}",
+                                            "autoCreate": true,
+                                            "bom": "${bomBase64}"
+                                          }' \\
+                                          -w '%{http_code}' \\
+                                          -o response.json
+                                    """,
+                                    returnStdout: true
+                                ).trim()
+                                
+                                if (response == '200') {
+                                    echo "✅ Frontend SBOM uploaded successfully"
+                                } else {
+                                    error "❌ Failed to upload Frontend SBOM. HTTP Status: ${response}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Wait for Analysis") {
+            steps {
+                script {
+                    echo "⏳ Waiting for Dependency-Track to process SBOMs..."
+                    sleep(time: 30, unit: 'SECONDS')
+                }
+            }
+        }
+
+        stage("Check Vulnerabilities") {
+            steps {
+                script {
+                    echo "🔍 Fetching vulnerability metrics from Dependency-Track..."
+                    
+                    def projectUuid = sh(
+                        script: """
+                            curl -s -X GET '${DT_URL}/api/v1/project/lookup?name=${DT_PROJECT_NAME}&version=${DT_PROJECT_VERSION}' \\
+                              -H 'X-Api-Key: ${DT_API_KEY}' | jq -r '.uuid'
+                        """,
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (projectUuid == 'null' || projectUuid == '') {
+                        error "❌ Project not found in Dependency-Track"
+                    }
+                    
+                    echo "📦 Project UUID: ${projectUuid}"
+                    
+                    def metricsJson = sh(
+                        script: """
+                            curl -s -X GET '${DT_URL}/api/v1/metrics/project/${projectUuid}/current' \\
+                              -H 'X-Api-Key: ${DT_API_KEY}'
+                        """,
+                        returnStdout: true
+                    ).trim()
+                    
+                    def metrics = readJSON text: metricsJson
+                    
+                    def critical = metrics.critical ?: 0
+                    def high = metrics.high ?: 0
+                    def medium = metrics.medium ?: 0
+                    def low = metrics.low ?: 0
+                    
+                    echo """
+┌─────────────────────────────────────────────┐
+│     Vulnerability Scan Results              │
+├─────────────────────────────────────────────┤
+│ 🔴 Critical:  ${critical} (Threshold: ${CRITICAL_THRESHOLD})        │
+│ 🟠 High:      ${high} (Threshold: ${HIGH_THRESHOLD})        │
+│ 🟡 Medium:    ${medium} (Threshold: ${MEDIUM_THRESHOLD})       │
+│ 🟢 Low:       ${low}                         │
+└─────────────────────────────────────────────┘
+                    """
+                    
+                    def violations = []
+                    
+                    if (critical > CRITICAL_THRESHOLD.toInteger()) {
+                        violations.add("🔴 Critical: ${critical} (exceeds ${CRITICAL_THRESHOLD})")
+                    }
+                    
+                    if (high > HIGH_THRESHOLD.toInteger()) {
+                        violations.add("🟠 High: ${high} (exceeds ${HIGH_THRESHOLD})")
+                    }
+                    
+                    if (medium > MEDIUM_THRESHOLD.toInteger()) {
+                        violations.add("🟡 Medium: ${medium} (exceeds ${MEDIUM_THRESHOLD})")
+                    }
+                    
+                    if (violations.size() > 0) {
+                        def violationMsg = violations.join('\n')
+                        echo """
+❌ BUILD FAILED - Vulnerability thresholds exceeded:
+
+${violationMsg}
+
+🔗 View details: ${DT_URL}/projects/${projectUuid}
+                        """
+                        error("Build rejected due to excessive vulnerabilities")
+                    } else {
+                        echo """
+✅ All vulnerability thresholds passed!
+
+🔗 View full report: ${DT_URL}/projects/${projectUuid}
+                        """
+                    }
+                }
+            }
+        }
+    }
         stage("SonarQube Quality Analysis") {
             steps {
                withSonarQubeEnv("Sonar") {
