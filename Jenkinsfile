@@ -111,21 +111,49 @@ stage("Upload SBOMs to Dependency-Track") {
         stage("Upload Backend SBOM") {
             steps {
                 dir('emp_backend') {
-                    sh '''
-                        echo "📤 Uploading Backend SBOM to Dependency-Track..."
-                        curl -X POST "${DT_URL}/api/v1/bom" -H "X-Api-Key: ${DT_API_KEY}" -F "projectName=${DT_PROJECT_NAME}" -F "projectVersion=${DT_PROJECT_VERSION}" -F "autoCreate=true" -F "bom=@target/bom.xml"
-                    '''
+                    script {
+                        echo "1. Reading and encoding Backend SBOM..."
+
+                        def bomContentBase64 = readFile(file: 'target/bom.xml').encodeBase64()
+                        
+                        echo "2. Uploading Backend SBOM via JSON Base64 payload..."
+                        
+                        sh """
+                            curl -X POST "${DT_URL}/api/v1/bom" \
+                                -H "X-Api-Key: ${DT_API_KEY}" \
+                                -H "Content-Type: application/json" \
+                                -d '{
+                                    "projectName": "${DT_PROJECT_NAME}",
+                                    "projectVersion": "${DT_PROJECT_VERSION}",
+                                    "autoCreate": true,
+                                    "bom": "${bomContentBase64}"
+                                }'
+                        """
+                    }
                 }
             }
         }
-
         stage("Upload Frontend SBOM") {
             steps {
                 dir('employee frontend final') {
-                    sh '''
-                        echo "📤 Uploading Frontend SBOM to Dependency-Track..."
-                        curl -X POST "${DT_URL}/api/v1/bom" -H "X-Api-Key: ${DT_API_KEY}" -F "projectName=${DT_PROJECT_NAME}-frontend" -F "projectVersion=${DT_PROJECT_VERSION}" -F "autoCreate=true" -F "bom=@bom.json"
-                    '''
+                    script {
+                        echo "1. Reading and encoding Frontend SBOM..."
+                        def bomContentBase64 = readFile(file: 'bom.json').encodeBase64()
+                        
+                        echo "2. Uploading Frontend SBOM via JSON Base64 payload..."
+                        
+                        sh """
+                            curl -X POST "${DT_URL}/api/v1/bom" \
+                                -H "X-Api-Key: ${DT_API_KEY}" \
+                                -H "Content-Type: application/json" \
+                                -d '{
+                                    "projectName": "${DT_PROJECT_NAME}-frontend",
+                                    "projectVersion": "${DT_PROJECT_VERSION}",
+                                    "autoCreate": true,
+                                    "bom": "${bomContentBase64}"
+                                }'
+                        """
+                    }
                 }
             }
         }
