@@ -78,78 +78,77 @@ pipeline {
                 }
             }
         }
+
 stage("Generate SBOM") {
-            parallel {
-                stage("Backend SBOM") {
-                    steps {
-                        dir('emp_backend') {
-                            sh '''
-                                mvn org.cyclonedx:cyclonedx-maven-plugin:makeBom
-                                ls -la target/
-                                if [ -f "target/bom.xml" ]; then
-                                    echo "Backend SBOM generated successfully"
-                                fi
-                            '''
-                        }
-                    }
-                }
-
-                stage("Frontend SBOM") {
-                    steps {
-                        dir('employee frontend final') {
-                            sh '''
-                                npm install -g @cyclonedx/cyclonedx-npm
-                                cyclonedx-npm --output-file bom.json
-                                ls -la
-                                if [ -f "bom.json" ]; then
-                                    echo "Frontend SBOM generated successfully"
-                                fi
-                            '''
-                        }
-                    }
+    parallel {
+        stage("Backend SBOM") {
+            steps {
+                dir('emp_backend') {
+                    sh '''
+                        mvn org.cyclonedx:cyclonedx-maven-plugin:makeBom
+                        echo "✅ Backend SBOM generated at target/bom.xml"
+                    '''
                 }
             }
         }
 
-        stage("Upload SBOMs to Dependency-Track") {
-            parallel {
-                stage("Upload Backend SBOM") {
-                    steps {
-                        dir('emp_backend') {
-                            sh '''
-                                curl -X POST "${DT_URL}/api/v1/bom" \
-                                  -H "Content-Type: application/json" \
-                                  -H "X-Api-Key: ${DT_API_KEY}" \
-                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$(cat target/bom.xml | base64 -w 0)\\"}"
-                                
-                                echo "✅ Backend SBOM uploaded"
-                            '''
-                        }
-                    }
-                }
-                
-                stage("Upload Frontend SBOM") {
-                    steps {
-                        dir('employee frontend final') {
-                            sh '''
-                                curl -X POST "${DT_URL}/api/v1/bom" \
-                                  -H "Content-Type: application/json" \
-                                  -H "X-Api-Key: ${DT_API_KEY}" \
-                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$(cat bom.json | base64 -w 0)\\"}"
-                                
-                                echo "✅ Frontend SBOM uploaded"
-                            '''
-                        }
-                    }
+        stage("Frontend SBOM") {
+            steps {
+                dir('employee frontend final') {
+                    sh '''
+                        npm install -g @cyclonedx/cyclonedx-npm
+                        cyclonedx-npm --output-file bom.json
+                        echo "✅ Frontend SBOM generated at bom.json"
+                    '''
                 }
             }
         }
+    }
+}
+
+stage("Upload SBOMs to Dependency-Track") {
+    parallel {
+        stage("Upload Backend SBOM") {
+            steps {
+                dir('emp_backend') {
+                    sh '''
+                        curl -X PUT "${DT_URL}/api/v1/bom" \
+                             -H "X-Api-Key: ${DT_API_KEY}" \
+                             -F "projectName=${DT_PROJECT_NAME}" \
+                             -F "projectVersion=${DT_PROJECT_VERSION}" \
+                             -F "autoCreate=true" \
+                             -F "bom=@target/bom.xml"
+                        echo "✅ Backend SBOM uploaded"
+                    '''
+                }
+            }
+        }
+
+        stage("Upload Frontend SBOM") {
+            steps {
+                dir('employee frontend final') {
+                    sh '''
+                        curl -X PUT "${DT_URL}/api/v1/bom" \
+                             -H "X-Api-Key: ${DT_API_KEY}" \
+                             -F "projectName=${DT_PROJECT_NAME}" \
+                             -F "projectVersion=${DT_PROJECT_VERSION}" \
+                             -F "autoCreate=true" \
+                             -F "bom=@bom.json"
+                        echo "✅ Frontend SBOM uploaded"
+                    '''
+                }
+            }
+        }
+    }
+}
+
+
 
         stage("Wait for Analysis") {
             steps {
                 script {
                     echo "⏳ Waiting for Dependency-Track to process SBOMs..."
-                    sleep(time: 30, unit: 'SECONDS')
+                    sleep(time: 5, unit: 'MINUTES')
                 }
             }
         }
