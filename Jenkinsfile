@@ -117,12 +117,10 @@ stage("Generate SBOM") {
                     steps {
                         dir('emp_backend') {
                             sh '''
-                                BOM_BASE64=$(cat target/bom.xml | base64 -w 0)
-                                
                                 curl -X POST "${DT_URL}/api/v1/bom" \
                                   -H "Content-Type: application/json" \
                                   -H "X-Api-Key: ${DT_API_KEY}" \
-                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$BOM_BASE64\\"}"
+                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$(cat target/bom.xml | base64 -w 0)\\"}"
                                 
                                 echo "✅ Backend SBOM uploaded"
                             '''
@@ -134,12 +132,10 @@ stage("Generate SBOM") {
                     steps {
                         dir('employee frontend final') {
                             sh '''
-                                BOM_BASE64=$(cat bom.json | base64 -w 0)
-                                
                                 curl -X POST "${DT_URL}/api/v1/bom" \
                                   -H "Content-Type: application/json" \
                                   -H "X-Api-Key: ${DT_API_KEY}" \
-                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$BOM_BASE64\\"}"
+                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$(cat bom.json | base64 -w 0)\\"}"
                                 
                                 echo "✅ Frontend SBOM uploaded"
                             '''
