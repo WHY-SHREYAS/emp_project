@@ -79,7 +79,7 @@ pipeline {
             }
         }
 
-        stage("Generate SBOM") {
+stage("Generate SBOM") {
             parallel {
                 stage("Backend SBOM") {
                     steps {
@@ -119,7 +119,7 @@ pipeline {
                         dir('emp_backend') {
                             script {
                                 def bomContent = readFile('target/bom.xml')
-                                def bomBase64 = bomContent.bytes.encodeBase64().toString()
+                                def bomBase64 = Base64.getEncoder().encodeToString(bomContent.getBytes())
                                 
                                 def response = sh(
                                     script: """
@@ -153,7 +153,7 @@ pipeline {
                         dir('employee frontend final') {
                             script {
                                 def bomContent = readFile('bom.json')
-                                def bomBase64 = bomContent.bytes.encodeBase64().toString()
+                                def bomBase64 = Base64.getEncoder().encodeToString(bomContent.getBytes())
                                 
                                 def response = sh(
                                     script: """
