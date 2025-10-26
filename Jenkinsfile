@@ -147,91 +147,88 @@ stage("Upload SBOMs to Dependency-Track") {
         stage("Wait for Analysis") {
             steps {
                 script {
-                    echo "⏳ Waiting for Dependency-Track to process SBOMs..."
+                    echo "Waiting for Dependency-Track to process SBOMs..."
                     sleep(time: 5, unit: 'MINUTES')
                 }
             }
         }
+stage("Check Vulnerabilities") {
+    steps {
+        script {
+            echo "Fetching vulnerability metrics from Dependency-Track..."
 
-        stage("Check Vulnerabilities") {
-            steps {
-                script {
-                    echo "🔍 Fetching vulnerability metrics from Dependency-Track..."
-                    
-                    def projectUuid = sh(
-                        script: """
-                            curl -s -X GET '${DT_URL}/api/v1/project/lookup?name=${DT_PROJECT_NAME}&version=${DT_PROJECT_VERSION}' \\
-                              -H 'X-Api-Key: ${DT_API_KEY}' | jq -r '.uuid'
-                        """,
-                        returnStdout: true
-                    ).trim()
-                    
-                    if (projectUuid == 'null' || projectUuid == '') {
-                        error "❌ Project not found in Dependency-Track"
-                    }
-                    
-                    echo "📦 Project UUID: ${projectUuid}"
-                    
-                    def metricsJson = sh(
-                        script: """
-                            curl -s -X GET '${DT_URL}/api/v1/metrics/project/${projectUuid}/current' \\
-                              -H 'X-Api-Key: ${DT_API_KEY}'
-                        """,
-                        returnStdout: true
-                    ).trim()
-                    
-                    def metrics = readJSON text: metricsJson
-                    
-                    def critical = metrics.critical ?: 0
-                    def high = metrics.high ?: 0
-                    def medium = metrics.medium ?: 0
-                    def low = metrics.low ?: 0
-                    
-                    echo """
+            // Fetch project UUID safely
+            def projectUuid = sh(
+                script: '''
+                    curl -s -X GET "${DT_URL}/api/v1/project/lookup?name=${DT_PROJECT_NAME}&version=${DT_PROJECT_VERSION}" \
+                        -H "X-Api-Key: ${DT_API_KEY}" | jq -r ".uuid"
+                ''',
+                returnStdout: true
+            ).trim()
+
+            if (!projectUuid || projectUuid == "null") {
+                error "Project not found in Dependency-Track for ${DT_PROJECT_NAME} ${DT_PROJECT_VERSION}"
+            }
+
+            echo "Project UUID: ${projectUuid}"
+
+            // Fetch vulnerability metrics
+            def metricsJson = sh(
+                script: """
+                    curl -s -X GET "${DT_URL}/api/v1/metrics/project/${projectUuid}/current" \
+                        -H "X-Api-Key: ${DT_API_KEY}"
+                """,
+                returnStdout: true
+            ).trim()
+
+            def metrics = readJSON text: metricsJson
+
+            def critical = metrics.critical ?: 0
+            def high = metrics.high ?: 0
+            def medium = metrics.medium ?: 0
+            def low = metrics.low ?: 0
+
+            echo """
 ┌─────────────────────────────────────────────┐
 │     Vulnerability Scan Results              │
 ├─────────────────────────────────────────────┤
-│ 🔴 Critical:  ${critical} (Threshold: ${CRITICAL_THRESHOLD})        │
-│ 🟠 High:      ${high} (Threshold: ${HIGH_THRESHOLD})        │
-│ 🟡 Medium:    ${medium} (Threshold: ${MEDIUM_THRESHOLD})       │
-│ 🟢 Low:       ${low}                         │
+│ Critical: ${critical} (Threshold: ${CRITICAL_THRESHOLD}) │
+│ High:     ${high} (Threshold: ${HIGH_THRESHOLD}) │
+│ Medium:   ${medium} (Threshold: ${MEDIUM_THRESHOLD}) │
+│ Low:      ${low} │
 └─────────────────────────────────────────────┘
-                    """
-                    
-                    def violations = []
-                    
-                    if (critical > CRITICAL_THRESHOLD.toInteger()) {
-                        violations.add("🔴 Critical: ${critical} (exceeds ${CRITICAL_THRESHOLD})")
-                    }
-                    
-                    if (high > HIGH_THRESHOLD.toInteger()) {
-                        violations.add("🟠 High: ${high} (exceeds ${HIGH_THRESHOLD})")
-                    }
-                    
-                    if (medium > MEDIUM_THRESHOLD.toInteger()) {
-                        violations.add("🟡 Medium: ${medium} (exceeds ${MEDIUM_THRESHOLD})")
-                    }
-                    
-                    if (violations.size() > 0) {
-                        def violationMsg = violations.join('\n')
-                        echo """
-❌ BUILD FAILED - Vulnerability thresholds exceeded:
+            """
 
-${violationMsg}
+            def violations = []
 
-🔗 View details: ${DT_URL}/projects/${projectUuid}
-                        """
-                        error("Build rejected due to excessive vulnerabilities")
-                    } else {
-                        echo """
-✅ All vulnerability thresholds passed!
+            if (critical.toInteger() > CRITICAL_THRESHOLD.toInteger())
+                violations.add("Critical: ${critical} > ${CRITICAL_THRESHOLD}")
 
+            if (high.toInteger() > HIGH_THRESHOLD.toInteger())
+                violations.add("High: ${high} > ${HIGH_THRESHOLD}")
+
+            if (medium.toInteger() > MEDIUM_THRESHOLD.toInteger())
+                violations.add("Medium: ${medium} > ${MEDIUM_THRESHOLD}")
+
+            if (violations) {
+                echo """
+BUILD FAILED - Vulnerability thresholds exceeded:
+
+${violations.join('\n')}
+
+View details: ${DT_URL}/projects/${projectUuid}
+                """
+                error("Build rejected due to excessive vulnerabilities")
+            } else {
+                echo """
+All vulnerability thresholds passed!
 🔗 View full report: ${DT_URL}/projects/${projectUuid}
-                        """
-                    }
-                }
+                """
             }
         }
+    }
+}
+
 
         stage("SonarQube Quality Analysis") {
             steps {
