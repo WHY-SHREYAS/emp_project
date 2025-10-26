@@ -136,7 +136,7 @@ stage("Wait for Analysis") {
     steps {
         script {
             echo "Waiting for Dependency-Track to process SBOMs..."
-            sleep(time: 30, unit: 'MINUTES') 
+            sleep(time: 2, unit: 'MINUTES') 
         }
     }
 }
