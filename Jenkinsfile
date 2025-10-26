@@ -116,30 +116,16 @@ stage("Generate SBOM") {
                 stage("Upload Backend SBOM") {
                     steps {
                         dir('emp_backend') {
-                            script {
-                                def bomContent = readFile('target/bom.xml')
-                                def bomBase64 = Base64.getEncoder().encodeToString(bomContent.getBytes())
+                            sh '''
+                                BOM_BASE64=$(cat target/bom.xml | base64 -w 0)
                                 
-                                withCredentials([string(credentialsId: 'dependency-track-api-key', variable: 'API_KEY')]) {
-                                    def response = sh(
-                                        script: '''
-                                            curl -X POST "''' + DT_URL + '''/api/v1/bom" \\
-                                              -H "Content-Type: application/json" \\
-                                              -H "X-Api-Key: $API_KEY" \\
-                                              -d \'{"project":"''' + DT_PROJECT_NAME + '''","projectVersion":"''' + DT_PROJECT_VERSION + '''","autoCreate":true,"bom":"''' + bomBase64 + '''"}\' \\
-                                              -w "%{http_code}" \\
-                                              -o response.json
-                                        ''',
-                                        returnStdout: true
-                                    ).trim()
-                                    
-                                    if (response == '200') {
-                                        echo "✅ Backend SBOM uploaded successfully"
-                                    } else {
-                                        error "❌ Failed to upload Backend SBOM. HTTP Status: ${response}"
-                                    }
-                                }
-                            }
+                                curl -X POST "${DT_URL}/api/v1/bom" \
+                                  -H "Content-Type: application/json" \
+                                  -H "X-Api-Key: ${DT_API_KEY}" \
+                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$BOM_BASE64\\"}"
+                                
+                                echo "✅ Backend SBOM uploaded"
+                            '''
                         }
                     }
                 }
@@ -147,30 +133,16 @@ stage("Generate SBOM") {
                 stage("Upload Frontend SBOM") {
                     steps {
                         dir('employee frontend final') {
-                            script {
-                                def bomContent = readFile('bom.json')
-                                def bomBase64 = Base64.getEncoder().encodeToString(bomContent.getBytes())
+                            sh '''
+                                BOM_BASE64=$(cat bom.json | base64 -w 0)
                                 
-                                withCredentials([string(credentialsId: 'dependency-track-api-key', variable: 'API_KEY')]) {
-                                    def response = sh(
-                                        script: '''
-                                            curl -X POST "''' + DT_URL + '''/api/v1/bom" \\
-                                              -H "Content-Type: application/json" \\
-                                              -H "X-Api-Key: $API_KEY" \\
-                                              -d \'{"project":"''' + DT_PROJECT_NAME + '''","projectVersion":"''' + DT_PROJECT_VERSION + '''","autoCreate":true,"bom":"''' + bomBase64 + '''"}\' \\
-                                              -w "%{http_code}" \\
-                                              -o response.json
-                                        ''',
-                                        returnStdout: true
-                                    ).trim()
-                                    
-                                    if (response == '200') {
-                                        echo "✅ Frontend SBOM uploaded successfully"
-                                    } else {
-                                        error "❌ Failed to upload Frontend SBOM. HTTP Status: ${response}"
-                                    }
-                                }
-                            }
+                                curl -X POST "${DT_URL}/api/v1/bom" \
+                                  -H "Content-Type: application/json" \
+                                  -H "X-Api-Key: ${DT_API_KEY}" \
+                                  -d "{\\"project\\":\\"${DT_PROJECT_NAME}\\",\\"projectVersion\\":\\"${DT_PROJECT_VERSION}\\",\\"autoCreate\\":true,\\"bom\\":\\"$BOM_BASE64\\"}"
+                                
+                                echo "✅ Frontend SBOM uploaded"
+                            '''
                         }
                     }
                 }
