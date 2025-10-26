@@ -112,13 +112,13 @@ stage("Upload SBOMs to Dependency-Track") {
             steps {
                 dir('emp_backend') {
                     sh '''
+                        echo "📤 Uploading Backend SBOM to Dependency-Track..."
                         curl -X PUT "${DT_URL}/api/v1/bom" \
-                             -H "X-Api-Key: ${DT_API_KEY}" \
-                             -F "projectName=${DT_PROJECT_NAME}" \
-                             -F "projectVersion=${DT_PROJECT_VERSION}" \
-                             -F "autoCreate=true" \
-                             -F "bom=@target/bom.xml"
-                        echo "✅ Backend SBOM uploaded"
+                            -H "X-Api-Key: ${DT_API_KEY}" \
+                            -F "projectName=${DT_PROJECT_NAME}" \
+                            -F "projectVersion=${DT_PROJECT_VERSION}" \
+                            -F "autoCreate=true" \
+                            -F "bom=@target/bom.xml"
                     '''
                 }
             }
@@ -128,19 +128,20 @@ stage("Upload SBOMs to Dependency-Track") {
             steps {
                 dir('employee frontend final') {
                     sh '''
+                        echo "📤 Uploading Frontend SBOM to Dependency-Track..."
                         curl -X PUT "${DT_URL}/api/v1/bom" \
-                             -H "X-Api-Key: ${DT_API_KEY}" \
-                             -F "projectName=${DT_PROJECT_NAME}" \
-                             -F "projectVersion=${DT_PROJECT_VERSION}" \
-                             -F "autoCreate=true" \
-                             -F "bom=@bom.json"
-                        echo "✅ Frontend SBOM uploaded"
+                            -H "X-Api-Key: ${DT_API_KEY}" \
+                            -F "projectName=${DT_PROJECT_NAME}-frontend" \
+                            -F "projectVersion=${DT_PROJECT_VERSION}" \
+                            -F "autoCreate=true" \
+                            -F "bom=@bom.json"
                     '''
                 }
             }
         }
     }
 }
+
 
 
 
