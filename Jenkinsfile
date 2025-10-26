@@ -78,7 +78,6 @@ pipeline {
                 }
             }
         }
-
 stage("Generate SBOM") {
             parallel {
                 stage("Backend SBOM") {
@@ -121,27 +120,24 @@ stage("Generate SBOM") {
                                 def bomContent = readFile('target/bom.xml')
                                 def bomBase64 = Base64.getEncoder().encodeToString(bomContent.getBytes())
                                 
-                                def response = sh(
-                                    script: """
-                                        curl -X POST '${DT_URL}/api/v1/bom' \\
-                                          -H 'Content-Type: application/json' \\
-                                          -H 'X-Api-Key: ${DT_API_KEY}' \\
-                                          -d '{
-                                            "project": "${DT_PROJECT_NAME}",
-                                            "projectVersion": "${DT_PROJECT_VERSION}",
-                                            "autoCreate": true,
-                                            "bom": "${bomBase64}"
-                                          }' \\
-                                          -w '%{http_code}' \\
-                                          -o response.json
-                                    """,
-                                    returnStdout: true
-                                ).trim()
-                                
-                                if (response == '200') {
-                                    echo "✅ Backend SBOM uploaded successfully"
-                                } else {
-                                    error "❌ Failed to upload Backend SBOM. HTTP Status: ${response}"
+                                withCredentials([string(credentialsId: 'dependency-track-api-key', variable: 'API_KEY')]) {
+                                    def response = sh(
+                                        script: '''
+                                            curl -X POST "''' + DT_URL + '''/api/v1/bom" \\
+                                              -H "Content-Type: application/json" \\
+                                              -H "X-Api-Key: $API_KEY" \\
+                                              -d \'{"project":"''' + DT_PROJECT_NAME + '''","projectVersion":"''' + DT_PROJECT_VERSION + '''","autoCreate":true,"bom":"''' + bomBase64 + '''"}\' \\
+                                              -w "%{http_code}" \\
+                                              -o response.json
+                                        ''',
+                                        returnStdout: true
+                                    ).trim()
+                                    
+                                    if (response == '200') {
+                                        echo "✅ Backend SBOM uploaded successfully"
+                                    } else {
+                                        error "❌ Failed to upload Backend SBOM. HTTP Status: ${response}"
+                                    }
                                 }
                             }
                         }
@@ -155,27 +151,24 @@ stage("Generate SBOM") {
                                 def bomContent = readFile('bom.json')
                                 def bomBase64 = Base64.getEncoder().encodeToString(bomContent.getBytes())
                                 
-                                def response = sh(
-                                    script: """
-                                        curl -X POST '${DT_URL}/api/v1/bom' \\
-                                          -H 'Content-Type: application/json' \\
-                                          -H 'X-Api-Key: ${DT_API_KEY}' \\
-                                          -d '{
-                                            "project": "${DT_PROJECT_NAME}",
-                                            "projectVersion": "${DT_PROJECT_VERSION}",
-                                            "autoCreate": true,
-                                            "bom": "${bomBase64}"
-                                          }' \\
-                                          -w '%{http_code}' \\
-                                          -o response.json
-                                    """,
-                                    returnStdout: true
-                                ).trim()
-                                
-                                if (response == '200') {
-                                    echo "✅ Frontend SBOM uploaded successfully"
-                                } else {
-                                    error "❌ Failed to upload Frontend SBOM. HTTP Status: ${response}"
+                                withCredentials([string(credentialsId: 'dependency-track-api-key', variable: 'API_KEY')]) {
+                                    def response = sh(
+                                        script: '''
+                                            curl -X POST "''' + DT_URL + '''/api/v1/bom" \\
+                                              -H "Content-Type: application/json" \\
+                                              -H "X-Api-Key: $API_KEY" \\
+                                              -d \'{"project":"''' + DT_PROJECT_NAME + '''","projectVersion":"''' + DT_PROJECT_VERSION + '''","autoCreate":true,"bom":"''' + bomBase64 + '''"}\' \\
+                                              -w "%{http_code}" \\
+                                              -o response.json
+                                        ''',
+                                        returnStdout: true
+                                    ).trim()
+                                    
+                                    if (response == '200') {
+                                        echo "✅ Frontend SBOM uploaded successfully"
+                                    } else {
+                                        error "❌ Failed to upload Frontend SBOM. HTTP Status: ${response}"
+                                    }
                                 }
                             }
                         }
