@@ -430,4 +430,3 @@ stage("Build & Push Docker Images") {
             echo 'Pipeline failed! Check the logs above.'
         }
     }
-}
