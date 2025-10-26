@@ -113,12 +113,7 @@ stage("Upload SBOMs to Dependency-Track") {
                 dir('emp_backend') {
                     sh '''
                         echo "📤 Uploading Backend SBOM to Dependency-Track..."
-                        curl -X PUT "${DT_URL}/api/v1/bom" \
-                            -H "X-Api-Key: ${DT_API_KEY}" \
-                            -F "projectName=${DT_PROJECT_NAME}" \
-                            -F "projectVersion=${DT_PROJECT_VERSION}" \
-                            -F "autoCreate=true" \
-                            -F "bom=@target/bom.xml"
+                        curl -X POST "${DT_URL}/api/v1/bom" -H "X-Api-Key: ${DT_API_KEY}" -F "projectName=${DT_PROJECT_NAME}" -F "projectVersion=${DT_PROJECT_VERSION}" -F "autoCreate=true" -F "bom=@target/bom.xml"
                     '''
                 }
             }
@@ -129,12 +124,7 @@ stage("Upload SBOMs to Dependency-Track") {
                 dir('employee frontend final') {
                     sh '''
                         echo "📤 Uploading Frontend SBOM to Dependency-Track..."
-                        curl -X PUT "${DT_URL}/api/v1/bom" \
-                            -H "X-Api-Key: ${DT_API_KEY}" \
-                            -F "projectName=${DT_PROJECT_NAME}-frontend" \
-                            -F "projectVersion=${DT_PROJECT_VERSION}" \
-                            -F "autoCreate=true" \
-                            -F "bom=@bom.json"
+                        curl -X POST "${DT_URL}/api/v1/bom" -H "X-Api-Key: ${DT_API_KEY}" -F "projectName=${DT_PROJECT_NAME}-frontend" -F "projectVersion=${DT_PROJECT_VERSION}" -F "autoCreate=true" -F "bom=@bom.json"
                     '''
                 }
             }
@@ -142,17 +132,15 @@ stage("Upload SBOMs to Dependency-Track") {
     }
 }
 
-
-
-
-        stage("Wait for Analysis") {
-            steps {
-                script {
-                    echo "Waiting for Dependency-Track to process SBOMs..."
-                    sleep(time: 2, unit: 'MINUTES')
-                }
-            }
+stage("Wait for Analysis") {
+    steps {
+        script {
+            echo "Waiting for Dependency-Track to process SBOMs..."
+            sleep(time: 15, unit: 'MINUTES') 
         }
+    }
+}
+
 stage("Check Vulnerabilities") {
     steps {
         script {
@@ -182,6 +170,7 @@ stage("Check Vulnerabilities") {
                 returnStdout: true
             ).trim()
 
+            // Note: readJSON is used here. Ensure metricsJson is pure JSON.
             def metrics = readJSON text: metricsJson
 
             def critical = metrics.critical ?: 0
@@ -191,7 +180,7 @@ stage("Check Vulnerabilities") {
 
             echo """
 ┌─────────────────────────────────────────────┐
-│     Vulnerability Scan Results              │
+│      Vulnerability Scan Results             │
 ├─────────────────────────────────────────────┤
 │ Critical: ${critical} (Threshold: ${CRITICAL_THRESHOLD}) │
 │ High:     ${high} (Threshold: ${HIGH_THRESHOLD}) │
