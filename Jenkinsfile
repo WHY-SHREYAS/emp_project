@@ -149,7 +149,7 @@ stage("Upload SBOMs to Dependency-Track") {
             steps {
                 script {
                     echo "Waiting for Dependency-Track to process SBOMs..."
-                    sleep(time: 5, unit: 'MINUTES')
+                    sleep(time: 2, unit: 'MINUTES')
                 }
             }
         }
